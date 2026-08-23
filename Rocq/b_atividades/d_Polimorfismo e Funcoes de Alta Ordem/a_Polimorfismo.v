@@ -41,6 +41,29 @@ Example teste_repete2 :
 Proof.
 reflexivity. Qed.
 
+(* Exercício *)
+(* Considere os dois seguintes tipos definidos indutivamente. *)
+Module MumbleGrumble.
+Inductive mumble : Type :=
+  | a
+  | b (x : mumble) (y : nat)
+  | c.
+Inductive grumble (X:Type) : Type :=
+  | d (m : mumble)
+  | e (x : X).
+(* Quais das seguintes são elementos bem tipados de grumble X para algum 
+tipo X? (Adicione SIM ou NÃO a cada linha. )
+
+    d (b a 5) (* NÃO *)
+    d mumble (b a 5) (* SIM *)
+    d bool (b a 5) (* SIM *)
+    e bool true (* SIM *)
+    e mumble (b c 0) (* SIM *)
+    e bool (b c 0) (* NÃO *)
+    c  (* NÃO *) *)
+
+End MumbleGrumble.
+
 (* Simplificando a notação *)
 (* Podemos usar a inferência de tipos do Rocq *)
 

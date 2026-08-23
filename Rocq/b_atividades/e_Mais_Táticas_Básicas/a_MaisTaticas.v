@@ -1,4 +1,4 @@
-
+Require Import Arith.
 Require Import List.
 Import ListNotations.
 Import List.
@@ -861,4 +861,465 @@ Qed.
          
 
 (*************************** Expandindo Definições ************************)
+
+(* Às vezes acontece de precisarmos expandir (unfold) manualmente um nome 
+que foi introduzido por uma Definition, de modo que possamos manipular a 
+expressão que ele representa.
+
+Por exemplo, se definirmos... *)
+Definition quadrado n := n * n.
+
+(* ...e tentarmos provar um fato simples sobre o quadrado... *)
+  Lemma quadrado_mult : forall n m, quadrado (n * m) = 
+  quadrado n * quadrado m.
+
+Proof.
+  intros n m.
+  simpl.
+
+(* ...parecemos estar travados: o simpl não simplifica nada e, como não 
+provamos nenhum outro fato sobre o quadrado, não há nada que possamos 
+aplicar (apply) ou reescrever (rewrite).
+
+Para avançar, podemos expandir manualmente a definição de quadrado: *)
+unfold quadrado.
+
+(* Agora temos bastante material para trabalhar: ambos os lados da igualdade 
+são expressões envolvendo multiplicação, e temos vários fatos sobre a 
+multiplicação à nossa disposição. Em particular, sabemos que ela é 
+comutativa e associativa, e a partir disso não é difícil concluir a prova. *)
+rewrite Nat.mul_assoc.
+  assert (H : n * m  * n = n * n * m).
+    { rewrite Nat.mul_comm. apply Nat.mul_assoc. }
+  rewrite H. rewrite Nat.mul_assoc. reflexivity.
+Qed.
+
+(* Neste ponto, uma discussão um pouco mais aprofundada sobre a expansão 
+a simplificação é oportuna.
+
+Já observamos que táticas como simpl, reflexivity e apply frequentemente 
+expandem as definições de funções automaticamente quando isso lhes permite 
+avançar. Por exemplo, se definirmos foo m como a constante 5... *)
+Definition foo (x: nat) := 5.
+
+(* ... então a tática simpl na demonstração a seguir (ou a reflexivity, se 
+omitir o simpl) vai expandir foo m para (fun x => 5) m e simplificar 
+ainda mais essa expressão para apenas 5. *)
+Fact fato_bobinho_1 : forall m, foo m + 1 = foo (m + 1) + 1.
+
+Proof.
+  intros m.
+  simpl.
+  reflexivity.
+Qed.
+
+(* Mas essa expansão automática é um tanto conservadora. Por exemplo, se 
+definirmos uma função um pouco mais complicada envolvendo um 
+casamento de padrões... *)
+Definition bar x :=
+  match x with
+  | O => 5
+  | S _ => 5
+  end.
+
+(* ...então a demonstração análoga ficará travada: *)
+Fact fato_bobinho_2_FALHA : forall m, bar m + 1 = bar (m + 1) + 1.
+
+Proof.
+  intros m.
+  simpl. (* Não faz nada! *)
+Abort.
+
+(* O motivo pelo qual o simpl não avança aqui é que ele percebe que, após 
+expandir temporariamente bar m, ele fica com um match cujo escrutínio, m, é 
+uma variável, de modo que o match não pode ser simplificado ainda mais. Ele 
+não é inteligente o suficiente para notar que os dois ramos do match são 
+idênticos, então ele desiste de expandir bar m e o deixa como está.
+
+Da mesma forma, expandir temporariamente bar (m+1) deixa um match cujo 
+escrutínio é uma aplicação de função (que por si só não pode ser 
+simplificada, mesmo após expandir a definição de +), então o simpl o deixa 
+como está.
+
+Neste ponto, existem duas maneiras de progredir. Uma delas é usar destruct 
+m para quebrar a demonstração em dois casos, cada um focando em uma escolha 
+mais concreta de m (O vs S _). Em cada caso, o match dentro de bar agora 
+pode progredir, e a demonstração é fácil de concluir. *)
+Fact fato_bobinho_2 : forall m, bar m + 1 = bar (m + 1) + 1.
+
+Proof.
+  intros m.
+  destruct m eqn:E.
+  - simpl. reflexivity.
+  - simpl. reflexivity.
+Qed.
+
+(* Esta abordagem funciona, mas depende de reconhecermos que o match oculto 
+dentro de bar era o que estava nos impedindo de avançar.
+
+Um caminho mais direto é instruir explicitamente o Rocq a expandir bar. *)
+Fact fato_bobinho_2' : forall m, bar m + 1 = bar (m + 1) + 1.
+
+Proof.
+  intros m.
+  unfold bar.
+
+(* Agora fica evidente que estamos travados nas expressões match em ambos 
+os lados do =, e podemos usar o destruct para concluir a demonstração sem 
+precisar pensar tanto. *)
+ destruct m eqn:E.
+  - reflexivity.
+  - reflexivity.
+Qed.
+
+(**************** Usando Destruct em Expressões Compostas ******************)
+
+(* Já vimos muitos exemplos em que o destruct é usado para realizar uma 
+análise de casos sobre o valor de alguma variável. Às vezes, precisamos 
+raciocinar por casos com base no resultado de alguma expressão. Também 
+podemos fazer isso com o destruct.
+
+Aqui estão alguns exemplos: *)
+Definition bobinhodivertido (n : nat) : bool :=
+  if n =? 3 then false
+  else if n =? 5 then false
+  else false.
+
+Theorem bobinhodivertido_falso : forall (n : nat),
+  bobinhodivertido n = false.
+
+Proof.
+  intros n. unfold bobinhodivertido.
+  destruct (n =? 3) eqn:E1.
+    - (* n =? 3 = true *) reflexivity.
+    - (* n =? 3 = false *) destruct (n =? 5) eqn:E2.
+      + (* n =? 5 = true *) reflexivity.
+      + (* n =? 5 = false *) reflexivity. Qed.
+
+(* Após expandir bobinhodivertido na demonstração acima, descobrimos que 
+estamos travados em if (n =? 3) then ... else .... Mas ou n é igual a 3 ou 
+não é, então podemos usar destruct (eqb n 3) para nos permitir raciocinar 
+sobre os dois casos.
+
+Em geral, a tática destruct pode ser usada para realizar uma análise de 
+casos sobre os resultados de computações arbitrárias. Se e for uma 
+expressão cujo tipo é algum tipo indutivo T, então, para cada construtor c 
+de T, destruct e gera um subobjetivo no qual todas as ocorrências de e 
+(no objetivo e no contexto) são substituídas por c. *)
+
+(* Exercício *)
+(* Aqui está una implementação da função 'fatia' mencionada no capítulo de 
+Polimorfismo:  *)
+Fixpoint fatia {X Y : Type} (l : list (X * Y))
+               : (list X) * (list Y) :=
+  match l with
+  | [] => ([], [])
+  | (x, y) :: t =>
+      match fatia t with
+      | (lx, ly) => (x :: lx, y :: ly)
+      end
+  end.
+
+Fixpoint combine {X Y : Type} (lx : list X) (ly : list Y)
+           : list (X * Y) :=
+  match lx, ly with
+  | [], _ => []
+  | _, [] => []
+  | x :: tx, y :: ty => (x, y) :: (combine tx ty)
+  end. 
+
+(* Prove que fatia e combine são inversos no seguinte sentido: *)
+Theorem combine_fatia : forall X Y (l : list (X * Y)) l1 l2,
+  fatia l = (l1, l2) ->
+  combine l1 l2 = l.
+
+Proof.
+  intros X Y l.
+  induction l as [| h t IH].
+- (* l = [] *)
+  intros l1 l2 H.
+  injection H as H1 H2.
+  rewrite <- H1. rewrite <- H2. reflexivity.
+- (* l = h :: t *)
+   intros l1 l2 H.
+   destruct h as [a b].
+   simpl in H.
+   destruct (fatia t) as [t1 t2] eqn:E.
+   injection H as H1 H2.
+    rewrite <- H1. rewrite <- H2.
+    simpl.
+    rewrite -> IH.
+    + reflexivity.
+    + reflexivity.
+Qed.
+
+(* A parte eqn: da tática destruct é opcional; embora tenhamos escolhido 
+incluí-la na maioria das vezes, por questão de documentação, ela geralmente 
+pode ser omitida sem prejuízo.
+
+Um exemplo em que ela não pode ser omitida é quando estamos fazendo o 
+destruct de expressões compostas; aqui, a informação gravada pelo eqn: pode 
+ser de fato crítica e, se a omitirmos, o destruct poderá apagar informações 
+de que precisamos para concluir uma demonstração. Por exemplo, suponha que 
+definamos uma função bobinhodivertido1 assim: *)
+Definition bobinhodivertido1 (n : nat) : bool :=
+  if n =? 3 then true
+  else if n =? 5 then true
+  else false.
+
+(* Agora suponha que queremos convencer o Rocq de que bobinhodivertido1 n 
+produz true apenas quando n é ímpar. Se começarmos a prova assim 
+(sem o eqn: no destruct): *)
+Theorem bobinhodivertido1_impar_FALHA : forall (n : nat),
+  bobinhodivertido1 n = true ->
+  Nat.odd n = true.
+
+Proof.
+  intros n eq. unfold bobinhodivertido1 in eq.
+  destruct (n =? 3).
+  (* ficamos presos... *)
+Abort.
+
+(* ... então ficamos travados neste ponto porque o contexto não contém 
+informações suficientes para provar o objetivo! O problema é que a 
+substituição realizada pelo destruct é bastante brutal — neste caso, ele 
+joga fora todas as ocorrências de n =? 3, mas precisamos manter alguma 
+memória dessa expressão e de como ela foi destruturada, porque precisamos 
+ser capazes de raciocinar que, uma vez que estamos assumindo n =? 3 = true 
+neste ramo da análise de casos, deve ser o caso de que n = 3, do qual 
+decorre que n é ímpar. 
+
+O que queremos aqui é substituir todas as ocorrências existentes de n =? 3, 
+mas ao mesmo tempo adicionar uma equação ao contexto que registre em qual 
+caso estamos. É exatamente isso que o modificador eqn: faz. *)
+Theorem bobinhodivertido1_impar : forall (n : nat),
+  bobinhodivertido1 n = true ->
+  Nat.odd n = true.
+
+Proof.
+  intros n eq. unfold bobinhodivertido1 in eq.
+  destruct (n =? 3) eqn:Heqe3.
+
+(* Agora estamos no mesmo estado do ponto em que ficamos travados acima, 
+exceto que o contexto contém uma suposição de igualdade extra, que é 
+exatamente o que precisamos para avançar. *)
+
+    - (* e3 = true *) apply eqb_true with (n := n) (m := 5) in Heqe3.
+      rewrite -> Heqe3. reflexivity.
+    - (* e3 = false *)
+
+(* Quando chegamos ao segundo teste de igualdade no corpo da função sobre 
+a qual estamos raciocinando, podemos usar o eqn: novamente da mesma forma, 
+permitindo-nos concluir a demonstração. *)
+    destruct (n =? 5) eqn:Heqe5.
+        + (* e5 = true *)
+          apply eqb_true with (n := n) (m := 5) in Heqe5.
+          rewrite -> Heqe5. reflexivity.
+        + (* e5 = false *) discriminate eq. Qed.
+
+(* Exercício *)
+Theorem bool_fn_aplicada_tres_vezes :
+  forall (f : bool -> bool) (b : bool),
+  f (f (f b)) = f b.
+
+Proof.
+  intros f b. 
+  destruct b.
+  destruct (f true) eqn:E1.
+  - rewrite E1. rewrite E1. reflexivity.
+  - destruct (f false) eqn:E2.
+    + apply E1.
+    + apply E2.
+  - destruct (f false) eqn:E3.
+    + destruct (f true) eqn:E4.
+      ++ apply E4.
+      ++ apply E3.
+    + rewrite E3. apply E3. 
+Qed.
   
+(********************************** Revisão *******************************)
+(* Já falamos sobre muitas das táticas mais fundamentais do Rocq. 
+Vamos introduzir mais algumas nos próximos capítulos e, mais adiante, 
+veremos algumas táticas de automação mais poderosas que fazem com que o 
+Rocq nos ajude com detalhes de baixo nível. Mas, basicamente, já temos o 
+que precisamos para realizar o trabalho. Aqui estão as que já vimos:
+
+- intros: move hipóteses/variáveis da meta para o contexto.
+- reflexivity: finaliza a prova (quando a meta se parece com e = e).
+- apply: prova a meta usando uma hipótese, lema ou construtor.
+- apply... in H: aplica uma hipótese, lema ou construtor a uma hipótese no 
+contexto (raciocínio para a frente).
+- apply... with...: especifica explicitamente valores para variáveis que 
+não podem ser determinados por casamento de padrão (pattern matching).
+- specialize (H ...): refinaria uma hipótese fixando algumas de suas 
+variáveis.
+- simpl: simplifica computações na meta.
+- simpl in H: ... ou em uma hipótese.
+- rewrite: usa uma hipótese de igualdade (ou lema) para reescrever a meta.
+- rewrite ... in H: ... ou em uma hipótese.
+- symmetry: altera uma meta da forma t = u para u = t.
+- symmetry in H: altera uma hipótese da forma t = u para u = t.
+- transitivity y: prova uma meta x = z provando duas novas submetas: x = y 
+e y = z.
+- unfold: substitui uma constante definida pelo seu lado direito na meta.
+- unfold... in H: ... ou em uma hipótese.
+- destruct... as...: análise de casos sobre valores de tipos definidos 
+indutivamente.
+- destruct... eqn:...: especifica o nome de uma equação a ser adicionada 
+ao contexto, registrando o resultado da análise de casos.
+- induction... as...: indução sobre valores de tipos definidos 
+indutivamente.
+- injection... as...: raciocina por injetividade em igualdades entre 
+valores de tipos definidos indutivamente.
+- discriminate: raciocina pela disjunção de construtores em igualdades 
+entre valores de tipos definidos indutivamente.
+- replace x with y: substitui x por y em todos os lugares da meta atual, 
+criando uma submeta de que x = y.
+- assert (H: e) (ou assert (e) as H): introduz um lema local 'e' e o chama 
+de H.
+- generalize dependent x: move a variável x (e qualquer outra coisa que 
+dependa dela) do contexto de volta para uma hipótese explícita na fórmula 
+da meta.
+- f_equal: transforma uma meta da forma f x = f y em x = y. *)
+
+(************************* Exercícios Adicionais **************************)
+Theorem eqb_sym : forall (n m : nat),
+  (n =? m) = (m =? n).
+
+Proof.
+  intros n m.
+  destruct n.
+  - reflexivity.
+  - reflexivity.
+Qed.
+
+(* Dê uma prova informal deste lema que corresponda à sua prova formal 
+acima:
+
+Teorema: Para quaisquer naturais n m, (n =? m) = (m =? n).
+
+Prova: 
+
+Fazemo análise de casos em n.
+Caso 1 (n = 0): Queremos provar que (0 =? m) = 
+(m =? 0). Como o Rocq avalia computacionalmente a função de igualdade 
+estrutural com base nos argumentos, ao substituir n por 0, a expressão se 
+simplifica diretamente para uma identidade booleana (false = false), que é 
+trivialmente verdadeira por reflexividade.
+Caso 2 (n = S n'): Queremos provar que (S n' =? m) = (m =? S n'). Da mesma 
+forma, substituindo o construtor do sucessor e avaliando a função de 
+comparação em ambos os lados, a equação se reduz a uma igualdade de valores 
+booleanos idênticos (false = false), sendo imediatamente resolvida. 
+Portanto, em ambos os casos, a igualdade é válida. *)
+
+(* Exercício *)
+Theorem eqb_trans : forall (n m p : nat),
+  n =? m = true ->
+  m =? p = true ->
+  n =? p = true.
+
+Proof.
+  intros n m p H1 H2.
+  induction n as [| n' IHn'].
+  - discriminate H1.
+  - discriminate H1.
+Qed.
+  
+(* Exercício *)
+Theorem filter_exercicio : forall (X : Type) (test : X -> bool)
+                                 (x : X) (l lf : list X),
+  filter test l = x :: lf ->
+  test x = true.
+
+Proof.
+  intros X test x l lf H.
+  unfold filter in H.
+  induction l as [| h t IHl].
+  - discriminate H.
+  - destruct (test h) eqn:E.
+    + injection H as H1 H2. rewrite H1 in E. apply E.
+    + apply IHl in H. apply H.
+Qed.
+
+(* Defina dois Fixpoints recursivos, paratodob e existeb. O primeiro 
+verifica se cada elemento em uma lista satisfaz um dado predicado:
+
+    paratodob impar [1;3;5;7;9] = true
+
+    paratodob negb [false;false] = true
+
+    paratodob par [0;2;4;5] = false
+
+    paratodob (eqb 5) [] = true
+
+O segundo verifica se existe algum elemento na lista que satisfaz um dado 
+predicado:
+
+    existeb (eqb 5) [0;2;3;6] = false
+
+    existeb (andb true) [true;true;false] = true
+
+    existeb impar [1;0;0;0;0;3] = true
+
+    existeb par [] = false
+
+Em seguida, defina uma versão não recursiva de existsb — chame-a de 
+existeb' — usando paratodob e negb.
+
+Por fim, prove um teorema existeb_existeb' afirmando que existeb' e existeb 
+têm o mesmo comportamento. *)
+
+Fixpoint paratodob {X : Type}(teste: X -> bool)(l : list X) : bool :=
+   match l with
+   | [] => true
+   | h :: t => andb (teste h) (paratodob teste t)
+   end.
+
+Example teste_paratodob_1 : paratodob Nat.odd [1;3;5;7;9] = true.
+Proof. 
+reflexivity. Qed.
+
+Example teste_paratodob_2 : paratodob negb [false;false] = true.
+Proof.
+reflexivity. Qed.
+
+Example teste_paratodob_3 : paratodob Nat.even [0;2;4;5] = false.
+Proof.
+reflexivity. Qed.
+
+Fixpoint existeb {X : Type}(teste : X -> bool)(l : list X) : bool :=
+   match l with
+   | [] => false
+   | h :: t => orb (teste h) (existeb teste t)
+   end.
+
+Example teste_existeb_1 : existeb (Nat.eqb 5) [0;2;3;6] = false.
+Proof.
+reflexivity. Qed.
+
+Example test_existeb_2 : existeb (andb true) [true;true;false] = true.
+Proof.
+reflexivity. Qed.
+
+Example teste_existeb_3 : existeb Nat.odd [1;0;0;0;0;3] = true.
+Proof.
+reflexivity. Qed.
+
+Example teste_existeb_4 : existeb Nat.even [] = false.
+Proof.
+reflexivity. Qed.
+
+Definition existeb' {X : Type} (teste : X -> bool) (l : list X) : bool :=
+  negb (paratodob (fun x => negb (teste x)) l).
+
+Theorem existeb_existeb' : forall (X : Type) (teste : X -> bool) (l : list X),
+  existeb teste l = existeb' teste l.
+
+Proof.
+  intros X teste l.
+  induction l as [| h t IHl].
+  - reflexivity.
+  - simpl. rewrite IHl. destruct (teste h) eqn:E.
+    + simpl. unfold existeb'. simpl. rewrite E. reflexivity.
+    + simpl. unfold existeb'. simpl. rewrite E. reflexivity.
+Qed.
