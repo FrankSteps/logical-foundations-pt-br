@@ -171,6 +171,17 @@ Definition lista123''' := [1;2;3].
 
 (* Provando teoremas com as novas notações *)
 
+(* Exercício *)
+Theorem juntar_nil_r : forall (X : Type), forall l : lista X,
+  l ++ [] = l.
+
+Proof.
+  intros X l.
+  induction l.
+  - reflexivity.
+  - simpl. rewrite IHl. reflexivity.
+Qed.
+
 Theorem juntar_assoc : forall X (lst1 lst2 lst3 : lista X),
    lst1 ++ lst2 ++ lst3 = (lst1 ++ lst2) ++ lst3.
 
@@ -179,6 +190,40 @@ Proof.
    - simpl. reflexivity.
    - simpl. rewrite IHt1. reflexivity.
 Qed.
+
+(* Exercício *)
+Lemma juntar_tamanho : forall (X : Type) (l1 l2 : list X),
+  length (l1 ++ l2) = length l1 + length l2.
+  
+Proof.
+  intros X l1 l2.
+  induction l1 as [| h1 t1 IHl1].
+  - reflexivity.
+  - simpl. rewrite IHl1. reflexivity.
+Qed.
+
+Theorem rev_juntar_distr: forall X  (l1 l2 : lista X),
+  reverter (l1 ++ l2) = reverter l2 ++ reverter l1.
+
+Proof.
+  intros X l1 l2.
+  induction l1 as [| h1 t1 IHl1].
+  - rewrite juntar_nil_r. simpl. reflexivity.
+  - simpl. rewrite juntar_assoc. rewrite IHl1. reflexivity.
+Qed.  
+
+Theorem rev_involutiva : forall X : Type, forall l : lista X,
+  reverter (reverter l) = l.
+
+Proof.
+   intros X l.
+   induction l as [| h t IHl].
+   - reflexivity.
+   - simpl. rewrite rev_juntar_distr. simpl. rewrite IHl.
+   reflexivity.
+Qed.
+  
+  
 
 (* Pares Polimórficos *)
 (* Semelhantemente a como definimos listas *)
@@ -217,6 +262,34 @@ Example combine_ex : combine [1;2] [3;4] = [(1,3); (2,4)].
 Proof.
    reflexivity. Qed.
 
+(* Exercício *)
+(* Tente responder às seguintes perguntas no papel e verificar suas respostas no Rocq: Qual é o tipo de 
+combine (ou seja, o que o Check @combine imprime)? O que Compute (combine 
+[1;2] [false;false;true;true]). imprime? *)
+
+Check @combine : forall X Y : Type, lista X -> lista Y -> lista (X * Y).
+
+(*[(1, false); (2, false)] *)
+Compute (combine [1;2] [false;false;true;true]).
+
+(* Exercício *)
+Fixpoint fatia {X Y : Type} (l : lista (X * Y))
+               : (lista X) * (lista Y) :=
+  match l with
+  | [] => ([], [])
+  | (x, y) :: t =>
+      match fatia t with
+      | (lx, ly) => (x :: lx, y :: ly)
+      end
+  end.
+
+Example teste_fatia:
+  fatia [(1,false);(2,false)] = ([1;2],[false;false]).
+
+Proof.
+   reflexivity.
+Qed.
+  
 (* Options Polimórficos *)
 
 Module OptionPlayground.
@@ -246,3 +319,25 @@ Example teste_enesimo_erro2 : enesimo_erro [[1];[2]] 1 = Some [2].
 Proof. reflexivity. Qed.
 Example teste_enesimo_erro3 : enesimo_erro [true] 2 = None.
 Proof. reflexivity. Qed.
+
+(* Exercício *)
+(* Head da lista que lida com caso de erro *)
+Definition hd_erro {X : Type} (l : lista X) : option X :=
+   match l with
+   | [] => None
+   | h :: t => Some h
+   end.
+
+Check @hd_erro : forall X : Type, lista X -> option X.
+
+Example test_hd_erro1 : hd_erro [1;2] = Some 1.
+
+Proof.
+   reflexivity.
+Qed.
+ 
+Example test_hd_erro2 : hd_erro [[1];[2]] = Some [1].
+
+Proof.
+   reflexivity.
+Qed.
