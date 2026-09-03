@@ -1061,4 +1061,289 @@ Proof.
           -- left. apply H.
           -- right. apply IH. left. apply H.
         * right. apply IH. right. apply H.
-Qed.      
+Qed.
+
+(* Observamos acima que funções que retornam proposições podem ser vistas 
+como propriedades de seus argumentos. Por exemplo, se P tem o tipo 
+nat → Prop, então P n afirma que a propriedade P é válida para n.
+Buscando inspiração em In, escreva uma função recursiva All afirmando que 
+alguma propriedade P é válida para todos os elementos de uma lista l. Para 
+garantir que sua definição está correta, prove o lema All_In abaixo. 
+(Naturalmente, sua definição não deve apenas reescrever o lado esquerdo de 
+All_In.) *)
+
+(* Todos os elementos tem que satisfazer a proposição ao mesmo tempo*)
+Fixpoint All {T : Type} (P : T -> Prop) (l : list T) : Prop :=
+   match l with
+   |[] => True
+   | x :: l' => P x /\ All P l'
+   end.
+  
+Theorem All_In :
+  forall T (P : T -> Prop) (l : list T),
+    (forall x, In x l -> P x) <->
+    All P l.
+
+Proof.
+ intros T P  l. 
+ split.
+ (* -> *)
+ - induction l as [| h t IHl'].
+ (* [ ] *)
+   + reflexivity.
+ (* h :: t*)
+   + simpl. intros H. split.
+     ++ apply H. left. reflexivity.
+     ++ apply IHl'. intros x H1.
+        -- apply H. right. apply H1.
+  (* <- *)
+  - intros H. intros x. induction l as [| h t IHl'].
+  (* [ ] *)
+     + intros H_in. simpl in H_in. destruct H_in as [].
+  (* h :: t *)
+     + simpl in IHl'. simpl in H. intros H_in. simpl in H_in. 
+     destruct H as [H1 H2]. destruct H_in as [H | H].
+      ++ rewrite <- H. apply H1.
+      ++ apply IHl'. apply H2. apply H.
+Qed.
+
+(* Complete a definição de combine_odd_even abaixo. Ela recebe como 
+argumentos duas propriedades de números, Ppar e Pimpar, e deve retornar uma 
+propriedade P tal que P n seja equivalente a Pimpar n quando n for ímpar e 
+equivalente a Ppar n caso contrário. *)
+
+Definition combine_impar_par (Pimpar Ppar : nat -> Prop) : nat -> Prop :=
+   fun n => if  Nat.odd n then Pimpar n else Ppar n.
+
+(* Para testar sua definição, prove os seguintes fatos: *)
+Theorem combine_impar_par_intro :
+  forall (Pimpar Ppar : nat -> Prop) (n : nat),
+    (Nat.odd n = true -> Pimpar n) ->
+    (Nat.odd n = false -> Ppar n) ->
+    combine_impar_par Pimpar Ppar n.
+    
+Proof. 
+  intros Pimpar Ppar n H1 H2.
+  unfold combine_impar_par. destruct (Nat.odd n) eqn:H.
+  - apply H1. reflexivity.
+  - apply H2. reflexivity.
+Qed.
+
+Theorem combine_impar_par_elim_impar :
+  forall (Pimpar Ppar : nat -> Prop) (n : nat),
+    combine_impar_par Pimpar Ppar n ->
+    Nat.odd n = true ->
+    Pimpar n.
+
+Proof.
+  intros Pimpar Ppar n H1 H2.
+  unfold combine_impar_par in H1.
+  destruct (Nat.odd n) eqn:H.
+  - apply H1.
+  - discriminate H2.
+Qed.
+
+
+Theorem combine_impar_par_elim_par :
+  forall (Pimpar Ppar : nat -> Prop) (n : nat),
+    combine_impar_par Pimpar Ppar n ->
+    Nat.odd n = false ->
+    Ppar n.
+
+Proof.
+  intros Pimpar Ppar n H1 H2.
+  unfold combine_impar_par in H1. destruct (Nat.odd n) eqn:H.
+  - discriminate H2.
+  - apply H1.
+Qed.
+
+(********************* Aplicando Teoremas a Argumentos *******************)
+
+(* Uma característica que diferencia o Rocq de outros assistentes de prova 
+populares (por exemplo, ACL2 e Isabelle) é que ele trata provas como 
+objetos de primeira classe.
+
+Há muito o que dizer sobre isso, mas não é necessário entender tudo para 
+usar o Rocq. Esta seção dá apenas uma amostra, deixando uma exploração 
+mais profunda para os capítulos opcionais ProofObjects e IndPrinciples.
+
+Vimos que podemos usar Check para pedir ao Rocq que verifique se uma 
+expressão possui um determinado tipo: *)
+
+Check plus : nat -> nat -> nat.
+Check @rev : forall X, list X -> list X.
+
+(* Também podemos usá-lo para verificar a qual teorema um determinado 
+identificador se refere: *)
+
+(* Teoremas visto anteriormente *)
+Theorem mais_n_Sm:
+   forall n m: nat, S(n + m) = n + S(m).
+
+Proof.
+   intros n m. induction n as [| n' IHn'].
+   - simpl. reflexivity.
+   - simpl. rewrite -> IHn'. reflexivity.
+Qed.
+
+Theorem add_comutativo:
+   forall n m: nat, n + m = m + n.
+
+Proof.
+   intros n m. induction n as [| n' IHn'].
+   - induction m as [| m' IHm'].
+    + reflexivity.
+    + simpl. rewrite <- IHm'. simpl. reflexivity.
+   - simpl. rewrite IHn'. rewrite <- mais_n_Sm. reflexivity.
+Qed.
+
+Theorem mais_id_exemplo :
+   forall (n m : nat) ,
+   n = m -> n + n = m + m.
+
+Proof.
+   intros n m. (* Move ambos os quantificadores para o contexto*)
+   intros H. (* Move a hipótese - chamamos de H - para o contexto *)
+   rewrite -> H. (* Reesreve 'goal' usando a hipótese *)
+reflexivity. Qed.
+
+
+Check add_comutativo : forall n m : nat, n + m = m + n.
+Check mais_id_exemplo : forall n m : nat, n = m -> n + n = m + m.
+
+(* O Rocq verifica as declarações dos teoremas add_comutativo e 
+mais_id_exemplo da mesma forma que verifica o tipo de qualquer termo (por 
+exemplo, plus). Se omitirmos os dois-pontos e o tipo, o Rocq imprimirá esses 
+tipos para nós.
+
+Por quê?
+
+O motivo é que o identificador add_comutativo na verdade se refere a um 
+objeto de prova — uma derivação lógica que estabelece a verdade da 
+declaração forall n m : nat, n + m = m + n. O tipo desse objeto é a 
+proposição da qual ele é uma prova. O tipo de uma função comum nos diz o 
+que podemos fazer com ela. Se temos um termo do tipo nat -> nat -> nat,
+podemos fornecer a ele dois números naturais como argumentos e obter um 
+natural de volta.
+
+Da mesma forma, a declaração de um teorema nos diz para que podemos usar 
+esse teorema. Se temos um termo do tipo forall n m, n = m -> n + n = m + m 
+e fornecemos a ele dois números n e m e um terceiro ''argumento'' do tipo 
+n = m, obtemos de volta um objeto de prova do tipo n + n = m + m.
+
+Operacionalmente, essa analogia vai ainda mais longe: ao aplicar um teorema 
+como se fosse uma função — ou seja, aplicando-o a valores e hipóteses com 
+tipos correspondentes —, podemos especializar seu resultado sem precisar 
+recorrer a asserções intermediárias. Por exemplo, suponha que quiséssemos 
+provar o seguinte resultado: *)
+
+Lemma add_comutativo3 :
+  forall x y z, x + (y + z) = (z + y) + x.
+
+(* À primeira vista, parece que deveríamos ser capazes de provar isso 
+reescrevendo com add_comutativo duas vezes para fazer os dois lados 
+coincidirem. O problema é que a segunda reescrita desfará o efeito da 
+primeira. *)
+
+Proof.
+  intros x y z.
+  rewrite add_comutativo.
+  rewrite add_comutativo.
+  (* Voltamos de onde começamos... *)
+Abort.
+
+(* Encontramos problemas semelhantes no capítulo Indução, e vimos uma 
+maneira de contorná-los usando assert para derivar uma versão especializada 
+de add_comutativo que pode ser usada para reescrever exatamente onde 
+queremos.*)
+
+
+Lemma add_comutativo3_tentativa2 :
+  forall x y z, x + (y + z) = (z + y) + x.
+
+Proof.
+  intros x y z.
+  rewrite add_comutativo.
+  assert (H : y + z = z + y).
+    { rewrite add_comutativo. reflexivity. }
+  rewrite H.
+  reflexivity.
+Qed.
+
+(* Uma alternativa mais elegante é aplicar add_comutativo diretamente aos 
+argumentos com os quais queremos instanciá-lo, da mesma forma que aplicamos 
+uma função polimórfica a um argumento de tipo. *)
+
+Lemma add_comutativo3_tentativa3 :
+  forall x y z, x + (y + z) = (z + y) + x.
+
+Proof.
+  intros x y z.
+  rewrite add_comutativo.
+  rewrite (add_comutativo y z).
+  reflexivity.
+Qed.
+
+(* Se nós realmente quiséssemos, poderíamos de fato fazer isso para ambas 
+as reescritas. *)
+
+Lemma add_comutativo_tentativa4 :
+  forall x y z, x + (y + z) = (z + y) + x.
+
+Proof.
+  intros x y z.
+  rewrite (add_comutativo x (y + z)).
+  rewrite (add_comutativo y z).
+  reflexivity.
+Qed.
+
+(* Aqui está outro exemplo do uso de um teorema sobre listas como uma 
+função. Suponha que tenhamos provado o seguinte fato simples sobre listas... *)
+
+Theorem in_nao_e_nil :
+  forall A (x : A) (l : list A), In x l -> l <> [].
+
+Proof.
+  intros A x l H. unfold negacao. intro Hl.
+  rewrite Hl in H.
+  simpl in H.
+  apply H.
+Qed.
+
+(* (Ou seja, se uma lista l contém algum elemento x, então l deve ser não 
+vazia.)Note que uma variável quantificada (x) não aparece na conclusão 
+(l ≠ []).Intuitivamente, deveríamos ser capazes de usar este teorema para 
+provar o caso especial em que x é 42. No entanto, simplesmente invocar a 
+tática apply in_nao_e_nil vai falhar porque ela não consegue inferir o 
+valor de x. *)
+
+Lemma in_nao_e_nil_42 :
+  forall l : list nat, In 42 l -> l <> [].
+
+Proof.
+  intros l H.
+  Fail apply in_nao_e_nil.
+Abort.
+
+(* Há várias maneiras de contornar isso:
+Podemos usar apply ... with ... : *)
+
+Lemma in_nao_e_nil_42_tentativa2 :
+  forall l : list nat, In 42 l -> l <> [].
+
+Proof.
+  intros l H.
+  apply in_nao_e_nil with (x := 42).
+  apply H.
+Qed.
+
+(* Ou podemos usar apply ... in ...: *)
+
+Lemma in_nao_e_nil_42_tentativa3 :
+  forall l : list nat, In 42 l -> l <> [].
+  
+Proof.
+  intros l H.
+  apply in_not_nil in H.
+  apply H.
+Qed.

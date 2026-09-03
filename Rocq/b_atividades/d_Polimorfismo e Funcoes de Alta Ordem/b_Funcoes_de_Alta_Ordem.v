@@ -313,6 +313,9 @@ para encurtar um dos exemplos que vimos acima: *)
 Example test_map1': map (plus 3) [2;0;2] = [5;3;5].
 Proof. reflexivity. Qed.
 
+(* Exercício de reflexão: antes de executar os seguintes comandos, você 
+consegue calcular os tipos de prod_curry e prod_uncurry? *)
+
 Check @prod_curry.
 Check @prod_uncurry.
 
@@ -323,3 +326,119 @@ Proof.
   intros X Y Z f x y. 
   unfold prod_uncurry. unfold prod_curry. reflexivity.
 Qed.
+
+Theorem curry_uncurry : forall (X Y Z : Type)
+                        (f : (X * Y) -> Z) (p : X * Y),
+  prod_uncurry (prod_curry f) p = f p.
+
+Proof.
+  intros X Y Z f p. 
+  destruct p. unfold prod_curry. unfold prod_uncurry. reflexivity.
+Qed.
+
+(* Lembre-se da definição da função enesimo_erro: 
+
+Fixpoint enesimo_erro {X : Type} (l : list X) (n : nat) : option X :=
+     match l with
+     | [] => None
+     | a :: l' => if n =? O then Some a else enesimo_erro l' (pred n)
+     end.
+
+Escreva uma demonstração informal detalhada do seguinte teorema: ∀ X l n, 
+length l = n → @nth_error X l n = None. Certifique-se de declarar 
+explicitamente a hipótese de indução. *)
+
+(* Teorema:
+   forall X l n, length l = n -> enesimo_erro X l n = None
+
+   Demonstração:
+   Prosseguimos por indução sobre a estrutura da lista l. Seja X um tipo 
+   arbitrário.
+
+   1. Caso Base: l = []
+   - Objetivo: Devemos mostrar que para todo n, se length [] = n, então
+    enesimo_erro [] n = None.
+   - Demonstração: 
+     Por definição, length [] = 0. Portanto, temos n = 0. 
+     Precisamos avaliar enesimo_erro [] 0. Pela definição de enesimo_erro 
+     para a lista vazia, enesimo_erro [] 0 = None. Isso conclui o caso base.
+
+   2. Passo Indutivo
+   - Hipótese de Indução (HI): Assuma que para alguma lista l' e para 
+     qualquer número natural n', se length l' = n', então 
+     enesimo_erro l' n' = None.
+   - Objetivo: Devemos mostrar que para qualquer elemento x em X e qualquer 
+     número natural n, se length (x :: l') = n, então 
+     enesimo_erro (x :: l') n = None.
+   - Demonstração: 
+     Seja l = x :: l'. Como length (x :: l') = n e a definição de length 
+     para uma lista não vazia é S (length l'), deve ser o caso que n = S n' 
+     para algum número natural n', onde length l' = n'.
+
+     Precisamos avaliar:
+     enesimo_erro (x :: l') (S n')
+
+     Pela definição de enesimo_erro em uma lista não vazia com um índice 
+     sucessor:
+     enesimo_erro (x :: l') (S n') = enesimo_erro l' n'
+
+     Pela nossa Hipótese de Indução, visto que length l' = n', sabemos que:
+     enesimo_erro l' n' = None
+
+     Portanto, enesimo_erro (x :: l') (S n') = None, o que conclui o passo 
+     indutivo. ■
+*)
+
+
+
+(* Numerais de Church (Avançado) *)
+
+(* Os exercícios a seguir exploram uma maneira alternativa de definir 
+números naturais usando os numerais de Church, que levam o nome de seu 
+inventor, o matemático Alonzo Church. Podemos representar um número natural n 
+como uma função que recebe uma função f como parâmetro e retorna f iterada n 
+vezes. *)
+
+Module Church. 
+  
+Definition cnat := forall X : Type, (X -> X) -> X -> X.
+
+(* Vamos ver como escrever alguns números com esta notação. Iterar uma 
+função uma vez deve ser o mesmo que apenas aplicá-la. Portanto: *)
+
+Definition um : cnat := fun (X : Type) (f : X -> X) (x : X) => f x.
+
+(* Da mesma forma, o dois deve aplicar f duas vezes ao seu argumento: *)
+
+Definition dois : cnat := fun (X : Type) (f : X -> X) (x : X) => f (f x).
+
+(* Definir o zero é um pouco mais complicado: como podemos ''aplicar uma 
+função zero vezes''? A resposta na verdade é simples: basta retornar o 
+argumento inalterado. *)
+
+Definition zero : cnat :=
+  fun (X : Type) (f : X -> X) (x : X) => x.
+
+(* Mais geralmente, um número $n$ pode ser escrito como `fun X f x => 
+f (f ... (f x) ...)`, com n ocorrências de `f`. Vamos denotar isso 
+informalmente como `fun X f x => f^n x`, com a convenção de que `f^0 x` é 
+apenas `x`. Note como a função `facaisso3vezes` que definimos anteriormente 
+é na verdade apenas a representação de Church de 3. *)
+
+Definition tres : cnat := @facaisso3vezes.
+
+(* Portanto, n X f x representa ''faça isso n vezes'', onde n é um numeral 
+de Church e ''isso'' significa aplicar f começando com x.
+
+Outra maneira de pensar sobre a representação de Church é que a função f 
+representa a operação de sucessor em X, e o valor x representa o elemento 
+zero de X. Poderíamos até reescrever com esses nomes para deixar mais claro: *)
+
+Definition zero' : cnat :=
+  fun (X : Type) (sucessor : X -> X) (zero : X) => zero.
+
+Definition um' : cnat :=
+  fun (X : Type) (sucessor : X -> X) (zero : X) => sucessor zero.
+
+Definition dois' : cnat :=
+  fun (X : Type) (sucessor : X -> X) (zero : X) => sucessor (sucessor zero).
