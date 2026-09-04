@@ -10,7 +10,7 @@ Import ListNotations.
 (* Agora já vimos muitos exemplos de afirmações factuais (ou seja, 
 proposições) e maneiras de apresentar evidências de sua verdade (provas). 
 Em particular, trabalhamos extensivamente com proposições de igualdade 
-(e1 ​= e2​), implicações (P → Q) e proposições quantificadas (∀x, P). 
+(e1 ​= e2​), implicações (P → Q) e proposições quantificadas (forallx, P). 
 Neste capítulo, veremos como o Rocq pode ser usado para realizar outras 
 formas familiares de raciocínio lógico.
 
@@ -130,7 +130,7 @@ Qed.
 
 (* Exercício *)
 Example adicao_e_O :
-  forall n m : nat, n + m = 0 -> n = 0 /\ m = 0.
+  forall  n m : nat, n + m = 0 -> n = 0 /\ m = 0.
 
 Proof.
    intros n m H.
@@ -145,7 +145,7 @@ Proof.
      + destruct n.
        * discriminate H.
        * discriminate H.
-Qed.
+Qed. 
 
 (* Por enquanto é isso sobre provar proposições conjuntas. Para ir na 
 direção oposta — isto é, usar uma hipótese conjuntiva para ajudar a provar 
@@ -317,7 +317,7 @@ Lemma zero_or_succ :
 
 Proof.
   (* TRABALHADO EM AULA *)
-  intros [|n'].
+  intros [ |n'].
   - left. reflexivity.
   - right. reflexivity.
 Qed.
@@ -327,7 +327,7 @@ Lemma mult_e_O :
   forall n m, n * m = 0 -> n = 0 \/ m = 0.
 
 Proof.
-  intros [| n'].
+  intros [ | n'].
   - left. reflexivity.
   - right. destruct m.
     + reflexivity.
@@ -353,7 +353,7 @@ afirmações são expressas com o operador de negação lógica ¬. Para ver com
 negação funciona, lembre-se do princípio da explosão do capítulo de Táticas, 
 o qual afirma que, se assumirmos uma contradição, qualquer outra proposição 
 poderá ser derivada.Seguindo essa intuição, poderíamos definir ¬ P (''não P'') 
-como  ∀ Q, P → Q. Na verdade, o Rocq faz uma escolha equivalente, mas 
+como  forall Q, P → Q. Na verdade, o Rocq faz uma escolha equivalente, mas 
 ligeiramente diferente, definindo ¬ P como P → False, onde False é uma 
 proposição específica não provável definida na biblioteca padrão. *)
  
@@ -490,7 +490,7 @@ Proof.
   apply HP.
 Qed.
 
-(* Escreva uma prova informal da proposição ∀ P : Prop, ~(P ∧ ¬P).
+(* Escreva uma prova informal da proposição forall P : Prop, ~(P ∧ ¬P).
 
 Seja P uma proposição arbitrária. Queremos demonstrar que é impossível que 
 P e sua negação ocorram simultaneamente, ou seja, ~(P ∧ ¬P).
@@ -806,14 +806,14 @@ Qed.
 
 (* Outro conectivo lógico fundamental é a quantificação existencial. Para 
 dizer que existe algum x do tipo T tal que alguma propriedade P é válida 
-para x, escrevemos ∃ x : T, P. Assim como com o ∀, a anotação de tipo : T 
+para x, escrevemos exists x : T, P. Assim como com o forall, a anotação de tipo : T 
 pode ser omitida se o Rocq for capaz de inferir a partir do contexto qual 
 deveria ser o tipo de x.
-Para provar uma afirmação da forma ∃ x, P, devemos mostrar que P é válida 
+Para provar uma afirmação da forma exists x, P, devemos mostrar que P é válida 
 para alguma escolha específica de x, conhecida como a testemunha (witness) 
 da quantificação existencial. Isso é feito em duas etapas: primeiro, dizemos 
 explicitamente ao Rocq qual testemunha t temos em mente invocando a tática 
-∃ t. Em seguida, provamos que P é válida após todas as ocorrências de x 
+exists t. Em seguida, provamos que P é válida após todas as ocorrências de x 
 serem substituídas por t. *)
 
 Definition Par x := exists n : nat, x = Nat.double n.
@@ -826,7 +826,7 @@ Proof.
   unfold Par. exists 2. reflexivity.
 Qed.
 
-(* Por outro lado, se temos uma hipótese existencial ∃ x, P no contexto, 
+(* Por outro lado, se temos uma hipótese existencial exists x, P no contexto, 
 podemos usar destruct nela para obter uma testemunha x e uma hipótese 
 afirmando que P é válida para x. *)
 
@@ -872,11 +872,11 @@ Theorem leb_mais_existe : forall n m, n <=? m = true -> exists x, m = n + x.
 
 Proof.
  intros n.
- induction n as [| n' IHn'].
+ induction n as [ | n' IHn'].
  - intros m H.
    exists m. reflexivity.
  - intros m H.
-   destruct m as [| m'].
+   destruct m as [ | m'].
    + discriminate H.
    + simpl in H.
      apply IHn' in H.
@@ -889,11 +889,11 @@ Theorem mais_existe_leb : forall n m,
 
 Proof.
   intros n.
-  induction n as [| n' IHn'].
+  induction n as [ | n' IHn'].
   - intros m H. 
      reflexivity.
   - intros m H. destruct H as [x E].
-     + destruct m as [| m'].
+     + destruct m as [ | m'].
        discriminate E.
        simpl. apply IHn'. exists x. injection E as E. apply E.
 Qed.
@@ -916,8 +916,8 @@ Qed.
     True : Prop 
     introduzido com apply I, mas não tão útil
 
-    ex : ∀ A:Type, (A → Prop) → Prop (existencial): 
-    introduzido com ∃ w; 
+    ex : forall A:Type, (A → Prop) → Prop (existencial): 
+    introduzido com exists w; 
     eliminado com destruct H as [x H]
 
 Conectivos derivados:
@@ -934,7 +934,7 @@ Conectivos fundamentais que estamos usando desde o início:
 
     implicação (P → Q)
 
-    quantificação universal (∀ x, P) *)
+    quantificação universal (forall x, P) *)
 
 (*********************** Programação com Proposições **********************)
 
@@ -986,7 +986,7 @@ Theorem In_map :
 
 Proof.
   intros A B f l x H.
-  induction l as [|x' l' IHl'].
+  induction l as [ |x' l' IHl'].
   - (* l = nil, contradição *)
     simpl. simpl in H. destruct H as [].
   - (* l = x' :: l' *)
@@ -1016,7 +1016,7 @@ Theorem In_map_sse :
 Proof.
   intros A B f l y. split.
   (* -> *)
-  - induction l as [|x l' IHl'].
+  - induction l as [ |x l' IHl'].
     + simpl. intros H. destruct H as []. (* Lista vazia: absurdo *)
     + simpl. intros [H | H].
       * exists x. split.
@@ -1029,7 +1029,7 @@ Proof.
   (* <- *)
   - intros [x [H1 H2]].
     rewrite <- H1.
-    induction l as [|x' l' IHl'].
+    induction l as [ |x' l' IHl'].
     + destruct H2 as [].        (* Lista vazia contradiz H2 *)
     + simpl in H2. destruct H2 as [H2 | H2].
       * subst x'. simpl. left. reflexivity.  (* x é a cabeça *)
@@ -1040,7 +1040,7 @@ Theorem In_juntar_sse : forall A l l' (a:A),
   In a (l ++ l') <-> In a l \/ In a l'.
 
 Proof.
-  intros A l. induction l as [|a' l' IH]. split. 
+  intros A l. induction l as [ |a' l' IH]. split. 
    (* lista vazia *)
   - simpl. intros H_in. right. apply H_in. (* -> *)
    (* <- *)
@@ -1088,7 +1088,7 @@ Proof.
  intros T P  l. 
  split.
  (* -> *)
- - induction l as [| h t IHl'].
+ - induction l as [ | h t IHl'].
  (* [ ] *)
    + reflexivity.
  (* h :: t*)
@@ -1097,7 +1097,7 @@ Proof.
      ++ apply IHl'. intros x H1.
         -- apply H. right. apply H1.
   (* <- *)
-  - intros H. intros x. induction l as [| h t IHl'].
+  - intros H. intros x. induction l as [ | h t IHl'].
   (* [ ] *)
      + intros H_in. simpl in H_in. destruct H_in as [].
   (* h :: t *)
@@ -1181,7 +1181,7 @@ Theorem mais_n_Sm:
    forall n m: nat, S(n + m) = n + S(m).
 
 Proof.
-   intros n m. induction n as [| n' IHn'].
+   intros n m. induction n as [ | n' IHn'].
    - simpl. reflexivity.
    - simpl. rewrite -> IHn'. reflexivity.
 Qed.
@@ -1190,8 +1190,8 @@ Theorem add_comutativo:
    forall n m: nat, n + m = m + n.
 
 Proof.
-   intros n m. induction n as [| n' IHn'].
-   - induction m as [| m' IHm'].
+   intros n m. induction n as [ | n' IHn'].
+   - induction m as [ | m' IHm'].
     + reflexivity.
     + simpl. rewrite <- IHm'. simpl. reflexivity.
    - simpl. rewrite IHn'. rewrite <- mais_n_Sm. reflexivity.
@@ -1344,6 +1344,15 @@ Lemma in_nao_e_nil_42_tentativa3 :
   
 Proof.
   intros l H.
-  apply in_not_nil in H.
+  apply in_nao_e_nil in H.
+  apply H.
+Qed.
+
+Lemma in_nao_e_nil_42_tentatica4 :
+  forall l : list nat, In 42 l -> l <> [].
+
+Proof.
+  intros l H.
+  apply (in_nao_e_nil nat 42).
   apply H.
 Qed.

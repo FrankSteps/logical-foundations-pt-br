@@ -331,7 +331,7 @@ Proof.
 
 (* Podemos prosseguir fazendo uma análise de casos em n. O primeiro caso é 
 trivial. *)
-destruct n as [| n'] eqn:E.
+destruct n as [ | n'] eqn:E.
   - (* n = 0 *)
     intros H. reflexivity.
 
@@ -431,7 +431,7 @@ Theorem mult_1_l : forall n : Datatypes.nat,
 Proof.
    intros n.
    simpl.
-   induction n as [| n' IHn'].
+   induction n as [ | n' IHn'].
    - reflexivity.
    - simpl. rewrite IHn'. reflexivity.
 Qed.
@@ -521,11 +521,11 @@ Theorem double_injetivo_FALHA : forall n m,
   n = m.
 
 Proof.
-  intros n m. induction n as [| n' IHn'].
-  - (* n = O *) simpl. intros eq. destruct m as [| m'] eqn:E.
+  intros n m. induction n as [ | n' IHn'].
+  - (* n = O *) simpl. intros eq. destruct m as [ | m'] eqn:E.
     + (* m = O *) reflexivity.
     + (* m = S m' *) discriminate eq.
-  - (* n = S n' *) intros eq. destruct m as [| m'] eqn:E.
+  - (* n = S n' *) intros eq. destruct m as [ | m'] eqn:E.
     + (* m = O *) discriminate eq.
     + (* m = S m' *) f_equal.
 (* Nesse ponto, a hipótese de indução (IHn') não nos dá n' = m' — há um 
@@ -587,8 +587,8 @@ Theorem double_injetivo : forall n m,
   n = m.
 
 Proof.
-  intros n. induction n as [| n' IHn'].
-  - (* n = O *) simpl. intros m eq. destruct m as [| m'] eqn:E.
+  intros n. induction n as [ | n' IHn'].
+  - (* n = O *) simpl. intros m eq. destruct m as [ | m'] eqn:E.
     + (* m = O *) reflexivity.
     + (* m = S m' *) discriminate eq.
   - (* n = S n' *)
@@ -605,7 +605,7 @@ intros m eq.
 n = double m. Como estamos fazendo uma análise de casos em n, também 
 precisamos de uma análise de casos em m para manter os dois em sincronia. *)
 
-destruct m as [| m'] eqn:E.
+destruct m as [ | m'] eqn:E.
 
 + (* m = O *)
 
@@ -634,11 +634,11 @@ Theorem eqb_true : forall (n m : nat ),
   n =? m = true -> n = m.
 
 Proof.
-  intros n. induction n as [| n' IHn'].
-  - intros m eq. induction m as [| m'] eqn:E.
+  intros n. induction n as [ | n' IHn'].
+  - intros m eq. induction m as [ | m'] eqn:E.
     + reflexivity.
     + discriminate eq.
-  - intros m eq. destruct m as [| m'] eqn:E. 
+  - intros m eq. destruct m as [ | m'] eqn:E. 
     + discriminate eq.
 + f_equal. apply IHn'. simpl in eq. discriminate eq. Qed.
 
@@ -684,7 +684,7 @@ de variantes com "in" nesta prova. (Dica: use mais_n_Sm.) *)
 Proof.
 
 Proof.
-   intros n m. induction n as [| n' IHn'].
+   intros n m. induction n as [ | n' IHn'].
    - simpl. reflexivity.
    - simpl. rewrite -> IHn'. reflexivity.
 Qed.
@@ -694,11 +694,11 @@ Theorem plus_n_n_injective : forall n m,
   n = m.
 
 Proof.
-  intros n. induction n as [| n' IHn'].
-  - intros m eq. induction m as [| m'] eqn:E.
+  intros n. induction n as [ | n' IHn'].
+  - intros m eq. induction m as [ | m'] eqn:E.
     + reflexivity.
     + discriminate.
-  - intros m eq. induction m as [| m'] eqn:E.
+  - intros m eq. induction m as [ | m'] eqn:E.
     + discriminate.
     + f_equal. simpl in eq. rewrite <- mais_n_Sm in eq. rewrite <- E in eq. 
       injection eq as eq_nova. rewrite E in eq_nova. 
@@ -716,11 +716,11 @@ Theorem double_injetivo_tentativa2_FALHA : forall n m,
   n = m.
 
 Proof.
-  intros n m. induction m as [| m' IHm'].
-  - (* m = O *) simpl. intros eq. destruct n as [| n'] eqn:E.
+  intros n m. induction m as [ | m' IHm'].
+  - (* m = O *) simpl. intros eq. destruct n as [ | n'] eqn:E.
     + (* n = O *) reflexivity.
     + (* n = S n' *) discriminate eq.
-  - (* m = S m' *) intros eq. destruct n as [| n'] eqn:E.
+  - (* m = S m' *) intros eq. destruct n as [ | n'] eqn:E.
     + (* n = O *) discriminate eq.
     + (* n = S n' *) f_equal.
         (* Nós estamos presos aqui, como antes. *)
@@ -749,11 +749,11 @@ Proof.
   generalize dependent n.
   (* Agora n está novamente no goal e nós podemos fazer indução em
      m e conseguir uma IH suficientemente geral. *)
-  induction m as [| m' IHm'].
-  - (* m = O *) simpl. intros n eq. destruct n as [| n'] eqn:E.
+  induction m as [ | m' IHm'].
+  - (* m = O *) simpl. intros n eq. destruct n as [ | n'] eqn:E.
     + (* n = O *) reflexivity.
     + (* n = S n' *) discriminate eq.
-  - (* m = S m' *) intros n eq. destruct n as [| n'] eqn:E.
+  - (* m = S m' *) intros n eq. destruct n as [ | n'] eqn:E.
     + (* n = O *) discriminate eq.
     + (* n = S n' *) f_equal.
       apply IHm'. injection eq as goal. apply goal. Qed.
@@ -803,7 +803,7 @@ suficientemente geral. *)
 Notation "x <=? y" := (Nat.leb x y) (at level 70) : nat_scope.
 Theorem add_0_r : forall n:nat, n + 0 = n.
 Proof.
-  intros n. induction n as [| n' IHn'].
+  intros n. induction n as [ | n' IHn'].
   - (* n = 0 *) reflexivity.
   - (* n = S n' *) simpl. rewrite -> IHn'. reflexivity. Qed.
 
@@ -811,15 +811,15 @@ Proof.
 Lemma sub_add_leb : forall n m, n <=? m = true -> (m - n) + n = m.
 Proof.
   intros n.
-  induction n as [| n' IHn'].
+  induction n as [ | n' IHn'].
   - (* n = 0 *)
-    intros m H. rewrite add_0_r. destruct m as [| m'].
+    intros m H. rewrite add_0_r. destruct m as [ | m'].
     + (* m = 0 *)
       reflexivity.
     + (* m = S m' *)
       reflexivity.
   - (* n = S n' *)
-    intros m H. destruct m as [| m'].
+    intros m H. destruct m as [ | m'].
     + (* m = 0 *)
       discriminate.
     + (* m = S m' *)
@@ -847,11 +847,11 @@ Theorem enesimo_erro_apos_ultimo: forall (n : nat) (X : Type) (l : list X),
 
 Proof.
   intros n.
-  induction n as [| n' IHn'].
-  - intros X l H. destruct l as [| l'].
+  induction n as [ | n' IHn'].
+  - intros X l H. destruct l as [ | l'].
     + reflexivity.
     + simpl. discriminate.
-  -  intros X l H. destruct l as [| l'].
+  -  intros X l H. destruct l as [ | l'].
     + simpl. discriminate.
     + simpl. 
     rewrite IHn'.
@@ -1035,7 +1035,7 @@ Theorem combine_fatia : forall X Y (l : list (X * Y)) l1 l2,
 
 Proof.
   intros X Y l.
-  induction l as [| h t IH].
+  induction l as [ | h t IH].
 - (* l = [] *)
   intros l1 l2 H.
   injection H as H1 H2.
@@ -1220,7 +1220,7 @@ Theorem eqb_trans : forall (n m p : nat),
 
 Proof.
   intros n m p H1 H2.
-  induction n as [| n' IHn'].
+  induction n as [ | n' IHn'].
   - discriminate H1.
   - discriminate H1.
 Qed.
@@ -1234,7 +1234,7 @@ Theorem filter_exercicio : forall (X : Type) (test : X -> bool)
 Proof.
   intros X test x l lf H.
   unfold filter in H.
-  induction l as [| h t IHl].
+  induction l as [ | h t IHl].
   - discriminate H.
   - destruct (test h) eqn:E.
     + injection H as H1 H2. rewrite H1 in E. apply E.
@@ -1317,7 +1317,7 @@ Theorem existeb_existeb' : forall (X : Type) (teste : X -> bool) (l : list X),
 
 Proof.
   intros X teste l.
-  induction l as [| h t IHl].
+  induction l as [ | h t IHl].
   - reflexivity.
   - simpl. rewrite IHl. destruct (teste h) eqn:E.
     + simpl. unfold existeb'. simpl. rewrite E. reflexivity.

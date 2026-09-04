@@ -346,7 +346,7 @@ Theorem add_inc_count : forall (v : nat)(b : bag),
 
 Proof.
    intros v b.
-   induction b as [| h t IHb].
+   induction b as [ | h t IHb].
    - reflexivity.
    - reflexivity.
 Qed.
@@ -361,7 +361,7 @@ Theorem tl_tamanho_predecessor: forall (lst:listanatural),
    pred (tamanho lst) = tamanho (tl lst). (* tamanho da lista - 1 = tamanho do tail *)
 
 Proof.
-    intros lst. destruct lst as [| h t].
+    intros lst. destruct lst as [ | h t].
     - simpl. reflexivity.
     - simpl. reflexivity.
 Qed.
@@ -371,7 +371,7 @@ Theorem juntar_assoc : forall (lst1 lst2 lst3 : listanatural),
    (lst1 ++ lst2) ++ lst3 = lst1 ++ (lst2 ++ lst3).
 
 Proof.
-   intros lst1 lst2 lst3. induction lst1 as [| h1 t1].
+   intros lst1 lst2 lst3. induction lst1 as [ | h1 t1].
    reflexivity.
    simpl. rewrite -> IHt1. reflexivity.
 Qed.
@@ -393,7 +393,7 @@ Theorem rev_tamanho_primeira_tentativa : forall (lst : listanatural),
    tamanho (rev lst) = tamanho lst.
 
 Proof.
-   intros lst. induction lst as [| h t].
+   intros lst. induction lst as [ | h t].
    - reflexivity.
    - simpl. rewrite <- IHt.
 Abort.
@@ -403,7 +403,7 @@ Theorem juntar_tamanho : forall (lst1 lst2 : listanatural),
    tamanho (lst1 ++ lst2) = (tamanho lst1) + (tamanho lst2).
 
 Proof.
-   intros lst1 lst2. induction lst1 as [| h1 t1].
+   intros lst1 lst2. induction lst1 as [ | h1 t1].
    - reflexivity.
    - simpl. rewrite IHt1. reflexivity.
 Qed.
@@ -413,7 +413,7 @@ Theorem rev_tamanho : forall (lst : listanatural),
    tamanho (rev lst) = tamanho lst.
 
 Proof.
-   intros lst. induction lst as [| h t].
+   intros lst. induction lst as [ | h t].
    - reflexivity.
    - simpl. rewrite -> juntar_tamanho.
      simpl. rewrite -> IHt. rewrite Nat.add_comm. (* importado da biblioteca *)
@@ -448,10 +448,10 @@ Theorem juntar_nil_r : forall l : listanatural,
   l ++ [] = l.
 
 Proof.
-   intros l. induction l as [| h t IHl].
+   intros l. induction l as [ | h t IHl].
    - reflexivity.
    - simpl. rewrite <- nil_juntar. assert (Haux : t ++ [] = t). {
-      induction t as [| h' t' IHt'].
+      induction t as [ | h' t' IHt'].
       - reflexivity.
       - rewrite IHl. reflexivity.
    }
@@ -463,7 +463,7 @@ Theorem rev_juntar_distr: forall l1 l2 : listanatural,
 
 Proof.
    intros l1 l2.
-   induction l1 as [| h1 t1 IHl1].
+   induction l1 as [ | h1 t1 IHl1].
    - simpl. rewrite juntar_nil_r. reflexivity.
    - simpl. rewrite <- juntar_assoc. rewrite IHl1. reflexivity.
 Qed.
@@ -474,7 +474,7 @@ Theorem rev_involutivo : forall l : listanatural,
 
 Proof.
    intros l.
-   induction l as [| h t IHl].
+   induction l as [ | h t IHl].
    - simpl. reflexivity.
    - simpl. rewrite rev_juntar_distr. simpl. rewrite IHl. reflexivity.
 Qed.
@@ -484,7 +484,7 @@ Theorem juntar_assoc4 : forall l1 l2 l3 l4 : listanatural,
 
 Proof.
    intros l1 l2 l3 l4.
-   induction l1 as [| h1 t1 IHl1].
+   induction l1 as [ | h1 t1 IHl1].
    - simpl. rewrite juntar_assoc. reflexivity.
    - simpl. rewrite <- IHl1. reflexivity.
 Qed.
@@ -494,7 +494,7 @@ Lemma sem_zeros_juntar : forall l1 l2 : listanatural,
 
 Proof.
    intros l1 l2.
-   induction l1 as [| h1 t1 IHl1].
+   induction l1 as [ | h1 t1 IHl1].
    - simpl. reflexivity.
    - simpl. destruct h1.
      + rewrite IHl1. reflexivity.
@@ -529,7 +529,7 @@ reflexivity. Qed.
 (* Lema Auxiliar *)
 Lemma eqb_refl : forall n : nat, eqb n n = true.
 Proof.
-  induction n as [| n' IHn].
+  induction n as [ | n' IHn].
   - simpl. reflexivity.
   - simpl. rewrite IHn. reflexivity.
 Qed.
@@ -537,7 +537,7 @@ Qed.
 Theorem eqblist_refl : forall l: listanatural,
   true = eqblist l l.
 Proof.
- intros l. induction l as [| h t IHl].
+ intros l. induction l as [ | h t IHl].
  - reflexivity.
  - simpl. rewrite eqb_refl. rewrite <- IHl. reflexivity.
 Qed.
@@ -556,7 +556,7 @@ Proof.
 Theorem leb_n_Sn : forall n,
   n <=? (S n) = true.
 Proof.
-  intros n. induction n as [| n' IHn'].
+  intros n. induction n as [ | n' IHn'].
   - (* 0 *)
     simpl. reflexivity.
   - (* S n' *)
@@ -568,7 +568,7 @@ Proof.
 Lemma le_succ_diag_r : forall n : nat,
   (n <=? S n) = true.
 Proof.
-  induction n as [| n' IHn].
+  induction n as [ | n' IHn].
   - simpl. reflexivity.
   - simpl. rewrite IHn. reflexivity.
 Qed.
@@ -577,7 +577,7 @@ Theorem remove_nao_incrementa_count : forall (s : bag),
   (count 0 (remove_um 0 s)) <=? (count 0 s) = true.
 
 Proof.
-  intros s. induction s as [| h t IHs'].
+  intros s. induction s as [ | h t IHs'].
   - reflexivity.
   - simpl. destruct h.
     +  simpl. rewrite le_succ_diag_r. reflexivity.

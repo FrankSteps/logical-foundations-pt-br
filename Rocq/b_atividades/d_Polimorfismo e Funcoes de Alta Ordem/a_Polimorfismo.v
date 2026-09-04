@@ -186,7 +186,7 @@ Theorem juntar_assoc : forall X (lst1 lst2 lst3 : lista X),
    lst1 ++ lst2 ++ lst3 = (lst1 ++ lst2) ++ lst3.
 
 Proof.
-   intros X lst1 lst2 lst3. induction lst1 as [| h1 t1].
+   intros X lst1 lst2 lst3. induction lst1 as [ | h1 t1].
    - simpl. reflexivity.
    - simpl. rewrite IHt1. reflexivity.
 Qed.
@@ -197,7 +197,7 @@ Lemma juntar_tamanho : forall (X : Type) (l1 l2 : list X),
   
 Proof.
   intros X l1 l2.
-  induction l1 as [| h1 t1 IHl1].
+  induction l1 as [ | h1 t1 IHl1].
   - reflexivity.
   - simpl. rewrite IHl1. reflexivity.
 Qed.
@@ -207,7 +207,7 @@ Theorem rev_juntar_distr: forall X  (l1 l2 : lista X),
 
 Proof.
   intros X l1 l2.
-  induction l1 as [| h1 t1 IHl1].
+  induction l1 as [ | h1 t1 IHl1].
   - rewrite juntar_nil_r. simpl. reflexivity.
   - simpl. rewrite juntar_assoc. rewrite IHl1. reflexivity.
 Qed.  
@@ -217,7 +217,7 @@ Theorem rev_involutiva : forall X : Type, forall l : lista X,
 
 Proof.
    intros X l.
-   induction l as [| h t IHl].
+   induction l as [ | h t IHl].
    - reflexivity.
    - simpl. rewrite rev_juntar_distr. simpl. rewrite IHl.
    reflexivity.

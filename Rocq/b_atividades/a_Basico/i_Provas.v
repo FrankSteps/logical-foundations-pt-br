@@ -115,7 +115,7 @@ Theorem mais_1_nig_o :
    (n + 1) =? 0 = false.
 
 Proof.
-   intros n. destruct n as [| n'] eqn : E. (* Dividido em dois casos - [| n] indica o nome introduzido em cada subgoal, 0 não recebe nenhum argumento e S recebe 1 *) (* 'E' diz para destruct dar esse nome para cada equação do subgoal *)
+   intros n. destruct n as [ | n'] eqn : E. (* Dividido em dois casos - [ | n] indica o nome introduzido em cada subgoal, 0 não recebe nenhum argumento e S recebe 1 *) (* 'E' diz para destruct dar esse nome para cada equação do subgoal *)
    - reflexivity.
    - reflexivity. Qed.
 
@@ -217,6 +217,6 @@ Theorem zero_nbeq_plus_1 : forall n : nat,
    0 =? (n + 1) = false.
 
 Proof.
-   intros n. destruct n as [|n'] eqn: E.
+   intros n. destruct n as [ |n'] eqn: E.
    - simpl. reflexivity.
    - simpl. reflexivity.   Qed.

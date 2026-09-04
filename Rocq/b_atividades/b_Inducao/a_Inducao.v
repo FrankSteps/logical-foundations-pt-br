@@ -19,7 +19,7 @@ Theorem add_0_r_segundatentativa :
 (* Mesmo fazendo vários destruct, não acontece nada, pois n pode ser arbitrariamente grande *)
 Proof.
    intros n.
-   destruct n as [| n'].
+   destruct n as [ | n'].
    reflexivity.
    simpl. (* Não faz nada *)
 Abort.
@@ -31,7 +31,7 @@ Theorem add_0_r :
    n + 0 = n.
 
 Proof.
-    intros n. induction n as [| n' IHn']. (* Nomes das variáveis a serem introduzidas como subgoal *)
+    intros n. induction n as [ | n' IHn']. (* Nomes das variáveis a serem introduzidas como subgoal *)
     - reflexivity.
     - simpl. rewrite -> IHn'. reflexivity. 
 Qed.
@@ -40,7 +40,7 @@ Theorem menos_n_n:
    forall n: nat, minus n n = 0.
 
 Proof.
-   intros n. induction n as [| n' IHn'].
+   intros n. induction n as [ | n' IHn'].
    - simpl. reflexivity.
    - simpl. rewrite -> IHn'. reflexivity.
 Qed.
@@ -50,7 +50,7 @@ Theorem nult_0_r:
    forall n: nat, mult n 0 = 0.
 
 Proof.
-   intros n. induction n as [| n' IHn'].
+   intros n. induction n as [ | n' IHn'].
    - simpl. reflexivity.
    - simpl. rewrite -> IHn'. reflexivity.
 Qed.
@@ -59,7 +59,7 @@ Theorem mais_n_Sm:
    forall n m: nat, S(n + m) = n + S(m).
 
 Proof.
-   intros n m. induction n as [| n' IHn'].
+   intros n m. induction n as [ | n' IHn'].
    - simpl. reflexivity.
    - simpl. rewrite -> IHn'. reflexivity.
 Qed.
@@ -68,8 +68,8 @@ Theorem add_comutativo:
    forall n m: nat, n + m = m + n.
 
 Proof.
-   intros n m. induction n as [| n' IHn'].
-   - induction m as [| m' IHm'].
+   intros n m. induction n as [ | n' IHn'].
+   - induction m as [ | m' IHm'].
     + reflexivity.
     + simpl. rewrite <- IHm'. simpl. reflexivity.
    - simpl. rewrite IHn'. rewrite <- mais_n_Sm. reflexivity.
@@ -80,7 +80,7 @@ Theorem add_associativo:
    n + (m + p) = (n + m) + p.
 
 Proof.
-   intros n m p. induction n as [| n' IHn'].
+   intros n m p. induction n as [ | n' IHn'].
    - simpl. reflexivity.
    - simpl. rewrite -> IHn'. reflexivity.
 Qed.
@@ -97,7 +97,7 @@ Lemma double_mais:
    forall n, double n = n + n.
 
 Proof.
-   intros n. induction n as [| n' IHn'].
+   intros n. induction n as [ | n' IHn'].
    - simpl. reflexivity.
    - simpl. rewrite -> IHn'. rewrite -> mais_n_Sm. reflexivity.
 Qed.
@@ -108,7 +108,7 @@ Theorem eqb_refl:
    forall n: nat, (n =? n) = true.
 
 Proof.
-   intros n. induction n as [| n' IHn'].
+   intros n. induction n as [ | n' IHn'].
    - simpl. reflexivity.
    - simpl. rewrite IHn'. reflexivity.
 Qed.
@@ -128,7 +128,7 @@ Theorem S_par:
    forall n: nat, even (S n) = negb (even n).
 
 Proof.
-   intros n. induction n as [| n' IHn'].
+   intros n. induction n as [ | n' IHn'].
    - simpl. reflexivity.
    - rewrite IHn'. simpl. rewrite negb_involutivo. reflexivity.
 
@@ -193,7 +193,7 @@ Theorem add_associativo' : forall n m p: nat,
    n + (m + p) = (n + m) + p.
 
 Proof.
-   intros n m p. induction n as [| n' IHn']. reflexivity.
+   intros n m p. induction n as [ | n' IHn']. reflexivity.
    simpl. rewrite IHn'. reflexivity.  Qed.
 
 (* Para facilitar o entendimento, comentários e bullets (-) podem ser usados para tornar semelhante a uma prova informal, que será mais facilmente compreendida pelo leitor *)
@@ -201,7 +201,7 @@ Theorem add_associativo'' : forall n m p: nat,
    n + (m + p) = (n + m) + p.
 
 Proof.
-   intros n m p. induction n as [| n' IHn']. 
+   intros n m p. induction n as [ | n' IHn']. 
    - (* n = 0 *)
    reflexivity.
    - (* n = S n' *)
@@ -267,7 +267,7 @@ Lemma mul_0_r : forall n : nat,
 
 Proof.
    intros n.
-   induction n as [| n' IHn'].
+   induction n as [ | n' IHn'].
    - simpl. reflexivity.
    - simpl. rewrite -> IHn'. reflexivity.
 Qed. 
@@ -278,7 +278,7 @@ Lemma mul_S_r : forall n k : nat,
 
 Proof.
   intros n k.
-  induction n as [| n' IHn'].
+  induction n as [ | n' IHn'].
   - simpl. reflexivity.
   - simpl. rewrite IHn'. replace (S k + (n' * k + n')) with (k + n' * k + S n').
   rewrite add_associativo.
@@ -296,7 +296,7 @@ Theorem mul_comutativo: forall m n: nat,
 
 Proof.
    intros m n.
-   induction m as [| m' IHm'].
+   induction m as [ | m' IHm'].
    simpl. rewrite mul_0_r. reflexivity.
    simpl. rewrite mul_S_r. rewrite add_comutativo. rewrite IHm'. reflexivity.
 Qed. 
@@ -306,7 +306,7 @@ Theorem leb_reflexivo: forall n: nat,
 
 Proof.
    intros n.
-   induction n as [| n' IHn'].
+   induction n as [ | n' IHn'].
    simpl. reflexivity.
    simpl. rewrite  IHn'. reflexivity.
 Qed.
@@ -345,7 +345,7 @@ Theorem mult_1_l : forall n:nat,
 Proof.
    intros n.
    simpl.
-   induction n as [| n' IHn'].
+   induction n as [ | n' IHn'].
    - reflexivity.
    - simpl. rewrite IHn'. reflexivity.
 Qed.
@@ -371,7 +371,7 @@ Theorem mult_plus_distr_r : forall n m p: nat,
    (n + m) * p = (n * p) + (m * p).
 
 Proof.
-   intros n m p. induction n as [| n' IHn'].
+   intros n m p. induction n as [ | n' IHn'].
    - simpl. reflexivity.
    - simpl. rewrite IHn'. rewrite add_associativo. reflexivity.
 Qed.
@@ -380,7 +380,7 @@ Theorem mult_assoc : forall n m p : nat,
    n * (m * p) = (n * m) * p.
 
 Proof.
-   intros n m p. induction n as [| n' IHn'].
+   intros n m p. induction n as [ | n' IHn'].
    - simpl. reflexivity.
    - simpl. rewrite mult_plus_distr_r. rewrite IHn'. reflexivity.
 Qed.
@@ -419,7 +419,7 @@ Theorem bin_to_nat_pres_incr : forall b : bin,
    bin_para_nat (incr b) = 1 + bin_para_nat b.
 
 Proof.
-   intros b. induction b as [| B0 IHB0' | B1' IHB1'].
+   intros b. induction b as [ | B0 IHB0' | B1' IHB1'].
    - simpl. reflexivity.
    - simpl. rewrite add_comutativo. rewrite mais_1_l. reflexivity.
    - simpl. rewrite IHB1'. rewrite add_0_r. rewrite mais_1_l. rewrite plus_Sn_m. f_equal. rewrite add_0_r. rewrite <- mais_1_l. rewrite <- add_associativo. rewrite (add_comutativo _ 1). reflexivity.
@@ -436,7 +436,7 @@ Theorem nat_bin_nat : forall n,
    bin_para_nat (nat_para_bin n) = n.
 
 Proof.
-   intros n. induction n as [| n' IHn'].
+   intros n. induction n as [ | n' IHn'].
    simpl. reflexivity.
    simpl. rewrite bin_to_nat_pres_incr. rewrite IHn'. rewrite mais_1_l. reflexivity.
 Qed.
@@ -451,7 +451,7 @@ Lemma  double_incr : forall n : nat,
    double (S n) = S (S (double n)).
 
 Proof.
-   intros n. induction n as [| n' IHn'].
+   intros n. induction n as [ | n' IHn'].
    simpl. reflexivity.
    simpl. rewrite <- IHn'. reflexivity.
 Qed. 
@@ -471,7 +471,7 @@ Lemma double_incr_bin : forall b,
    double_bin (incr b) = incr (incr (double_bin b)).
 
 Proof.
-   intros b. induction b as [| BO' IHBO' | B1' IHB1'].
+   intros b. induction b as [ | BO' IHBO' | B1' IHB1'].
    simpl. reflexivity.
    simpl. reflexivity.
    simpl. reflexivity.
@@ -527,18 +527,18 @@ Theorem bin_nat_bin: forall b,
    nat_para_bin (bin_para_nat b) = normalize b.
    
 Proof.
-   intros b. induction b as [| B0' IHB0'| B1' IHB1'].
+   intros b. induction b as [ | B0' IHB0'| B1' IHB1'].
    -simpl. reflexivity.
    -simpl. rewrite add_0_r. rewrite <- double_mais. assert (H_double : forall n, nat_para_bin (double n) = double_bin (nat_para_bin n)).
 {
-  induction n as [| n' IHn].
+  induction n as [ | n' IHn].
   - simpl. reflexivity.
   - simpl. rewrite double_incr_bin. rewrite IHn. reflexivity.
 }
   rewrite H_double. rewrite IHB0'. reflexivity.
   - simpl. rewrite add_0_r. rewrite <- add_associativo. rewrite <- mais_n_Sm. rewrite add_0_r. rewrite <- mais_n_Sm. rewrite <- double_mais. simpl. assert (H_double : forall n, nat_para_bin (double n) = double_bin (nat_para_bin n)).
 {
-  induction n as [| n' IHn].
+  induction n as [ | n' IHn].
   - simpl. reflexivity.
   - simpl. rewrite double_incr_bin. rewrite IHn. reflexivity.
 }

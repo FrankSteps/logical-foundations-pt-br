@@ -133,7 +133,7 @@ map f (l1 ++ l2) = map f l1 ++ map f l2.
 
 Proof.
   intros X Y f l1 l2.
-  induction l1 as [| h1 t1 IHl1].
+  induction l1 as [ | h1 t1 IHl1].
   - reflexivity.
   - simpl. rewrite IHl1. reflexivity.
 Qed.
@@ -144,7 +144,7 @@ Theorem map_rev : forall (X Y : Type) (f : X -> Y) (l : list X),
 
 Proof.
   intros X Y f l.
-  induction l as [| h t IHl].
+  induction l as [ | h t IHl].
   - reflexivity.
   - simpl. rewrite juntar_map. simpl. rewrite IHl. reflexivity.
 Qed.
@@ -265,7 +265,7 @@ Theorem fold_length_correct : forall X (l : list X),
 
 Proof.
    intros X l.
-   unfold fold_tamanho. induction l as [| h t IHl].
+   unfold fold_tamanho. induction l as [ | h t IHl].
    - reflexivity.
    - simpl. rewrite IHl. reflexivity.
 Qed.
@@ -442,3 +442,16 @@ Definition um' : cnat :=
 
 Definition dois' : cnat :=
   fun (X : Type) (sucessor : X -> X) (zero : X) => sucessor (sucessor zero).
+
+(** Se tivessemos passado S como sucessor e 0 como zero, nós até conseguiriamos os
+naturais de Peano como resultado: *)
+
+
+
+Example zero_church_peano : zero nat S O = 0. Proof. reflexivity. Qed.
+Example um_church_peano : um nat S O = 1. Proof. reflexivity. Qed.
+Example dois_church_peano : dois nat S O = 2. Proof. reflexivity. Qed. 
+
+(* Exercício *)
+Definition plus (n m : cnat) : cnat :=
+  fun X f x => f (n + m) x.
