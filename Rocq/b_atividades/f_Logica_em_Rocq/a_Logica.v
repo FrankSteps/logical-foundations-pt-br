@@ -1543,3 +1543,92 @@ que
 (1) n =? m retorna true, ou 
 (2) n = m. 
 Mais uma vez, essas duas noções são equivalentes: *)
+
+(* Teoremas Auxiliares *)
+Theorem eqb_true : forall (n m : nat ),
+  n =? m = true -> n = m.
+
+Proof.
+  intros n. induction n as [ | n' IHn'].
+  - intros m eq. induction m as [ | m'] eqn:E.
+    + reflexivity.
+    + discriminate eq.
+  - intros m eq. destruct m as [ | m'] eqn:E. 
+    + discriminate eq.
++ f_equal. apply IHn'. simpl in eq. apply eq. Qed.
+
+Theorem eqb_refl:
+   forall n: nat, (n =? n) = true.
+
+Proof.
+   intros n. induction n as [ | n' IHn'].
+   - simpl. reflexivity.
+   - simpl. rewrite IHn'. reflexivity.
+Qed.
+
+(* Teorema Principal *)
+Theorem eqb_eq : forall n1 n2 : nat,
+  n1 =? n2 = true <-> n1 = n2.
+Proof.
+  intros n1 n2. split.
+  - apply eqb_true.
+  - intros H. rewrite H. rewrite eqb_refl. reflexivity.
+Qed.
+
+(* Então, o que devemos fazer em situações em que uma determinada afirmação 
+pode ser formalizada tanto como uma proposição quanto como uma computação 
+booleana? Qual delas devemos escolher?
+
+Em geral, ambas podem ser úteis. 
+
+Por exemplo, os booleanos são mais úteis para definir computações. Não há 
+uma maneira efetiva de testar se um Prop é verdadeiro ou não, por isso não 
+podemos usar Props em expressões condicionais. A seguinte definição é 
+rejeitada: *)
+
+Fail
+Definition e_par_primo n :=
+  if n = 2 then true
+  else false.
+
+(* O Rocq reclama que n = 2 tem o tipo Prop, enquanto ele espera um elemento 
+de bool (ou algum outro tipo indutivo com dois construtores). Isso tem a ver 
+com a natureza computacional da linguagem principal do Rocq, que é projetada 
+para que cada função que ela consiga expressar seja computável e total. (Uma 
+razão para isso é permitir a extração de programas executáveis a partir de 
+desenvolvimentos em Rocq.) Como consequência, Prop no Rocq não possui uma 
+operação universal de análise de casos que informe se uma dada proposição é 
+verdadeira ou falsa, já que tal operação nos permitiria escrever funções não 
+computáveis. 
+
+Em vez disso, temos que declarar essa definição usando um teste de igualdade 
+booleano. *)
+
+Definition e_par_primo n :=
+  if n =? 2 then true
+  else false.
+
+(* Além do fato de que propriedades não computáveis são, em geral, 
+impossíveis de serem formuladas como computações booleanas, muitas 
+propriedades computáveis também são mais fáceis de expressar usando Prop do 
+que bool, uma vez que as definições de funções recursivas no Rocq estão 
+sujeitas a restrições significativas. Por exemplo, o próximo capítulo mostra 
+como definir a propriedade de que uma expressão regular corresponde a uma 
+dada string usando Prop. Fazer o mesmo com bool equivaleria a escrever um 
+algoritmo de correspondência de expressões regulares, o que seria mais 
+complicado, mais difícil de entender e mais difícil de raciocinar a respeito 
+do que uma definição simples (não algorítmica) dessa propriedade.
+
+Por outro lado, um benefício colateral importante de declarar fatos usando 
+booleanos é possibilitar certa automação de provas por meio da computação 
+com termos do Rocq, uma técnica conhecida como prova por reflexão (proof by 
+reflection). 
+
+Considere a seguinte afirmação: *)
+
+Example par_1000 : Par 1000.
+
+(* A maneira mais direta de provar isso é fornecer o valor de k 
+explicitamente. *)
+
+Proof. unfold Par. exists 500. reflexivity. Qed.
