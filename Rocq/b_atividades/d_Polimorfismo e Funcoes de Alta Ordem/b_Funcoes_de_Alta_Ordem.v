@@ -452,6 +452,95 @@ Example zero_church_peano : zero nat S O = 0. Proof. reflexivity. Qed.
 Example um_church_peano : um nat S O = 1. Proof. reflexivity. Qed.
 Example dois_church_peano : dois nat S O = 2. Proof. reflexivity. Qed. 
 
+(* Uma implicação muito interessante dos numerais de Church é que não 
+precisamos estritamente que os números naturais sejam nativos em uma 
+linguagem de programação funcional, nem mesmo que sejam definíveis com um 
+tipo de dados indutivo. É possível representá-los puramente (ainda que não 
+de forma eficiente) usando apenas funções.
+
+É claro que não basta apenas ''representar'' os numerais; precisamos ser 
+capazes de realizar operações aritméticas com essa representação. Mostre que 
+isso é possível completando as definições das seguintes funções. Certifique-se 
+de que os testes unitários correspondentes passem ao prová-los com 
+reflexividade. *)
+
 (* Exercício *)
-Definition plus (n m : cnat) : cnat :=
-  fun X f x => f (n + m) x.
+(* Defina uma função que calcula o sucessor de um numeral de Church.
+
+Dado um numeral de Church n, seu sucessor scc n deve iterar seu argumento de 
+função uma vez a mais do que n. Ou seja, dado fun X f x => f^n x como 
+entrada, scc deve produzir fun X f x => f^(n+1) x como saída. Em outras 
+palavras, faça-o n vezes, depois faça-o mais uma vez. *)
+
+Definition scc (n : cnat) : cnat :=
+   fun X f x => f (n X f x).
+
+Example scc_1 : scc zero = um. Proof. reflexivity. Qed.
+Example scc_2 : scc um = dois. Proof. reflexivity. Qed.
+Example scc_3 : scc dois = tres. Proof. reflexivity. Qed.
+
+(* Defina uma função que calcula a adição de dois numerais de Church. Dados 
+fun X f x => f^n x e fun X f x => f^m x como entrada, adicao deve produzir 
+fun X f x => f^(n + m) x como saída. Em 
+outras palavras, faça-o n vezes, depois faça-o mais m vezes. Dica: o 
+argumento ''zero'' de um numeral de Church não precisa ser apenas x. *)
+
+
+Definition adicao (n m : cnat) : cnat :=
+  fun X f x => n X f (m X f x).
+
+Example adicao_1 : adicao zero um = um. Proof. reflexivity. Qed.
+
+Example adicao_2 : adicao dois tres = adicao tres dois. 
+Proof. reflexivity. Qed.
+
+Example adicao_3 : adicao (adicao dois dois) tres = adicao um (adicao tres tres). 
+Proof. reflexivity. Qed.
+
+(* Defina uma função que calcule a multiplicação de dois 
+numerais de Church. 
+Dica: o argumento ''sucessor'' para um numeral de Church não 
+precisa ser apenas f.
+Aviso: o Rocq não deixará você passar cnat como o argumento 
+de tipo X para um numeral de Church; você receberá um erro 
+de ''inconsistência de universo'' (Universe inconsistency). 
+Essa é a maneira do Rocq de evitar um paradoxo no qual um 
+tipo contém a si mesmo. Portanto, deixe o argumento de tipo 
+inalterado. *)
+
+Definition mult (n m : cnat) : cnat :=
+   fun X f x => m X (n X f) x.
+
+Example mult_1 : mult um um = um. Proof. reflexivity. Qed.
+
+Example mult_2 : mult zero (adicao tres tres) = zero. 
+Proof. reflexivity. Qed.
+
+Example mult_3 : mult dois tres = adicao tres tres. 
+Proof. reflexivity. Qed.
+
+(** Exponenciação: *)
+
+(** Defina uma função que calcule a exponenciação de dois 
+numerais de Church.
+
+Dica: o argumento de tipo para um numeral de Church não 
+precisa ser apenas X.
+Mas, novamente, você não pode passar `cnat` em si como o a
+rgumento de tipo.
+Encontrar o tipo correto pode ser complicado. *)
+
+Definition exp (n m : cnat) : cnat :=
+  fun X f x => m (X -> X) (n X) f x.
+
+Example exp_1 : exp dois dois = adicao dois dois. 
+Proof. reflexivity. Qed.
+
+Example exp_2 : exp tres zero = um. 
+Proof. reflexivity. Qed.
+
+Example exp_3 : exp tres dois = 
+adicao (mult dois (mult dois dois)) um. 
+Proof. reflexivity. Qed.
+
+End Church.
