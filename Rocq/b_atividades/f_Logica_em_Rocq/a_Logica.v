@@ -3,6 +3,9 @@ Require Import List.
 Import List.
 Import ListNotations.
 Require Import Lia.
+Require Import Coq.Classes.Morphisms.
+Require Import Coq.Setoids.Setoid.
+
 (* LÓGICA *)
 (* LÓGICA EM ROCQ*)
 
@@ -962,14 +965,14 @@ Fixpoint In {A : Type} (x : A) (l : list A) : Prop :=
 (* Quando In é aplicado a uma lista concreta, ele se expande em uma 
 sequência concreta de disjunções aninhadas. *)
 
-Example In_examplo_1 : In 4 [1; 2; 3; 4; 5].
+Example In_exemplo_1 : In 4 [1; 2; 3; 4; 5].
 
 Proof.
   (* TRABALHADO EM AULA *)
   simpl. right. right. right. left. reflexivity.
 Qed.
 
-Example In_examplo_2 :
+Example In_exemplo_2 :
   forall n, In n [2; 4] -> Par n.
 
 Proof.
@@ -1632,3 +1635,693 @@ Example par_1000 : Par 1000.
 explicitamente. *)
 
 Proof. unfold Par. exists 500. reflexivity. Qed.
+
+(* A prova da afirmação booleana correspondente é mais simples, porque não 
+precisamos inventar a testemunha 500: o mecanismo de computação do Rocq faz 
+isso por nós! *)
+
+Example par_1000' : Nat.even 1000 = true.
+Proof. reflexivity. Qed.
+
+(* Agora, a observação útil é que, como as duas noções são equivalentes, 
+podemos usar a formulação booleana para provar a outra sem mencionar 
+explicitamente o valor 500: *)
+
+Example par_1000'' : Par 1000.
+Proof. apply par_bool_prop. reflexivity. Qed.
+
+(* Embora não tenhamos ganho muito em termos de número de linhas do script de 
+prova neste caso, provas maiores muitas vezes podem se tornar consideravelmente 
+mais simples com o uso da reflexão. Como um exemplo extremo, uma famosa prova 
+em Rocq do ainda mais famoso teorema das quatro cores usa a reflexão para 
+reduzir a análise de centenas de casos diferentes a uma computação booleana.
+
+Outra vantagem dos booleanos é que a negação de uma afirmação sobre booleanos 
+é simples de formular e (quando verdadeira) de provar: basta inverter o 
+resultado booleano esperado. *)
+
+Example nao_par_1001 : Nat.even 1001 = false.
+Proof.
+  reflexivity.
+Qed.
+
+(* Em contraste, pode ser difícil trabalhar diretamente com a negação 
+proposicional.
+
+Por exemplo, suponha que declaremos a não-paridade de 1001 proposicionalmente: *)
+
+Example nao_par_1001' : ~(Par 1001).
+
+(* Provar isso diretamente — assumindo que existe algum n tal que 1001 = 
+double n e então, de alguma forma, chegando a uma contradição — seria bastante 
+complicado.
+
+Mas se o convertirmos em uma afirmação sobre a função booleana even, podemos 
+deixar o Rocq fazer o trabalho por nós. *)
+
+Proof.
+  (* TRABALHADO EM AULA *)
+  unfold negacao.
+  rewrite <- par_bool_prop.
+  simpl.
+  intro H.
+  discriminate H.
+Qed.
+
+(* Por outro lado, há situações em que pode ser mais fácil trabalhar com 
+proposições em vez de booleanos. 
+
+Em particular, saber que (n =? m) = true geralmente é de pouco ajuda direta no 
+meio de uma prova envolvendo n e m. Mas se convertemos a afirmação para a forma 
+equivalente n = m, então podemos reescrever facilmente com ela. *)
+
+Lemma adicao_eqb_exemplo : forall n m p : nat,
+  n =? m = true -> n + p =? m + p = true.
+Proof.
+  (* WORKED IN CLASS *)
+  intros n m p H.
+  rewrite eqb_eq in H.
+  rewrite H.
+  rewrite eqb_eq.
+  reflexivity.
+Qed.
+
+(* Não discutiremos mais sobre reflexão por enquanto, mas ela serve como um bom 
+exemplo que mostra os diferentes pontos fortes dos booleanos e das proposições 
+gerais.
+
+Ser capaz de transitar de um lado para o outro entre os mundos booleano e 
+proposicional será frequentemente conveniente nos próximos capítulos. *)
+
+(* Exercício *)
+
+(* Os seguintes teoremas relacionam os conectivos proposicionais estudados 
+neste capítulo às operações booleanas correspondentes. *)
+Notation "x && y" := (andb x y).
+Notation "x || y" := (orb x y).
+
+Theorem andb_true_sse : forall b1 b2:bool,
+  b1 && b2 = true <-> b1 = true /\ b2 = true.
+
+Proof.
+   intros b1 b2.
+   split.
+   - intros H. destruct b1. destruct b2. split.
+    + reflexivity.
+    + reflexivity.
+    + discriminate H.
+    + discriminate H.
+  - intros H. destruct H as [H1 H2]. rewrite H1. rewrite H2. reflexivity. 
+Qed.
+     
+  
+
+Theorem orb_true_sse : forall b1 b2,
+  b1 || b2 = true <-> b1 = true \/ b2 = true.
+
+Proof.
+  intros b1 b2.
+  split.
+  - intros H. destruct b1. 
+    + left. reflexivity.
+    + right. destruct H. simpl. reflexivity.
+  - intros H. destruct H as [H1 | H2]. 
+    + rewrite H1. reflexivity.
+    + rewrite H2. destruct b1. reflexivity. reflexivity.
+Qed.
+
+(* O teorema a seguir é uma formulação 'negativa' alternativa de eqb_eq que é 
+mais conveniente em certas situações. (Veremos exemplos nos próximos capítulos.) 
+Dica: negacao_true_sse_false *)
+
+Theorem eqb_neq : forall x y : nat,
+  x =? y = false <-> x <> y.
+
+Proof.
+  intros x y.
+  split.
+  - intros H. intros Heq. apply eqb_eq in Heq. rewrite Heq in H. discriminate H.
+  - intros H. destruct (x =? y) eqn:E.
+    + apply ex_falso_quodlibet. apply H. apply eqb_eq. apply E.
+    + reflexivity.
+Qed.
+
+(* Dado um operador booleano eqb para testar a igualdade de elementos de algum 
+tipo A, podemos definir uma função eqb_lista para testar a igualdade de listas 
+com elementos em A. Complete a definição da função eqb_lista abaixo. Para ter 
+certeza de que sua definição está correta, prove o lema eqb_lista_verdade_sse. *)
+
+Fixpoint eqb_lista {A : Type} (eqb : A -> A -> bool)
+                  (l1 l2 : list A) : bool :=
+   match l1, l2 with
+   | [] , [] => true
+   | [] , _ => false
+   | _ , [] => false
+   | h1 :: t1, h2 :: t2 =>
+                          if eqb h1 h2
+                          then eqb_lista eqb t1 t2
+                          else false
+    end.
+
+
+Theorem eqb_lista_verdade_sse :
+  forall A (eqb : A -> A -> bool),
+    (forall a1 a2, eqb a1 a2 = true <-> a1 = a2) ->
+    forall l1 l2, eqb_lista eqb l1 l2 = true <-> l1 = l2.
+
+Proof.
+  intros A eqb H1 l1.
+  induction l1 as [ | h1 t1 IHl1].
+  - intros l2.
+    destruct l2.
+    + (* nil e nil *)
+      split.
+      * intros _. reflexivity.
+      * intros _. reflexivity.
+    + (* nil e h2 :: t2 (absurdo) *)
+      split.
+      * intros H. discriminate H.
+      * intros H. discriminate H.
+  - intros l2.
+    destruct l2.
+    + (* Caso: h1 :: t1 e nil (absurdo) *)
+      split.
+      * intros H. discriminate H.
+      * intros H. discriminate H.
+    + (* Caso principal: h1 :: t1 e h2 :: t2 *)
+      split.
+      * (* (->): eqb_lista eqb (h1 :: t1) (a :: l2) = true -> h1 :: t1 = a :: l2 *)
+        intros H.
+        simpl in H.
+        apply andb_true_sse in H. 
+        destruct H as [H_cabeca H_cauda].
+        apply H1 in H_cabeca.       
+        apply IHl1 in H_cauda.      
+        rewrite H_cabeca.
+        rewrite H_cauda.
+        reflexivity.
+      * (* (<-): h1 :: t1 = a :: l2 -> eqb_lista eqb (h1 :: t1) (a :: l2) = true *)
+        intros H.
+        destruct H.
+        simpl.
+        (* eqb h1 h1 é true *)
+        assert (H_eq : eqb h1 h1 = true).
+        { apply H1. reflexivity. }
+        rewrite H_eq.
+        apply IHl1.
+        reflexivity.
+Qed.
+
+(* Prove o teorema abaixo, que relaciona o paratodob, do exercício paratodob e 
+existeb no capítulo MaisTaticas, com a propriedade All definida acima. Copie a 
+definição de paratodob do seu capítulo MaisTaticas para cá para que este 
+arquivo possa ser avaliado por conta própria. *)
+Fixpoint paratodob {X : Type}(teste: X -> bool)(l : list X) : bool :=
+   match l with
+   | [] => true
+   | h :: t => andb (teste h) (paratodob teste t)
+   end.
+
+Theorem paratodob_verdadeiro_sse : forall X teste (l : list X),
+  paratodob teste l = true <-> All (fun x => teste x = true) l.
+
+Proof.
+  intros X teste l. 
+  split.
+  (* -> *)
+  - induction l as [ | h t IHl].
+  (* [ ] *)
+   + intros H. simpl. apply I.
+  (* h :: t *)
+   + intros H. simpl. split.
+     -- destruct (teste h) eqn:E.
+        ++ reflexivity.
+        ++ simpl in H. rewrite E in H. simpl in H. discriminate H.
+     -- apply IHl. simpl in H. destruct (teste h) eqn:E.
+        ++ simpl in H. apply H.
+        ++ simpl in H. discriminate H.
+  (* <- *)
+  - induction l as [ | h t IHl].
+  (* [ ] *)
+    + intros H. simpl. reflexivity.
+  (* h :: t *)
+    + intros H. simpl. 
+       destruct (teste h) eqn:E.
+         ++ unfold andb. apply IHl. apply H.
+         ++ unfold andb. rewrite <- E. apply H.
+Qed.
+
+(* (Pergunta de reflexão opcional) Existem propriedades importantes da função 
+paratodob que não são capturadas por esta especificação? 
+
+Resposta: 
+Em detalhes, o que fica de fora da especificação é:
+
+    O curto-circuito: A função paratodob usa o operador booleano &&, o que 
+    significa que ela para de rodar imediatamente assim que encontra o 
+    primeiro elemento que dá false. Ela não gasta tempo testando o resto da 
+    lista.
+
+    O que a especificação diz: O teorema (<-> All ...) garante apenas o resultado 
+    final (se no fim das contas tudo deu verdadeiro ou não). Ele é uma 
+    descrição lógica (o que é verdade), mas é completamente cega para como o 
+    algoritmo computa isso de forma otimizada ou qual é a ordem de execução.
+
+Em suma: a especificação garante que o resultado está correto, mas ignora 
+completamente a vantagem de desempenho de parar mais cedo quando acha um erro! *)
+
+(***************************** A Lógica do Rocq *****************************)
+
+(* O núcleo lógico do Rocq, o Cálculo de Construções Indutivas, difere de 
+algumas maneiras importantes de outros sistemas formais que são usados por 
+matemáticos para escrever definições e provas precisas e rigorosas — em 
+particular da Teoria dos Conjuntos de Zermelo-Fraenkel (ZFC), a fundação mais 
+popular para a matemática de papel e lápis.
+
+Concluímos este capítulo com uma breve discussão sobre algumas das diferenças 
+mais significativas entre esses dois mundos. *)
+
+(* Extensionalidade Funcional *)
+(* A lógica do Rocq é bastante minimalista. Isso significa que ocasionalmente 
+encontramos casos em que traduzir o raciocínio matemático padrão para o Rocq se 
+torna trabalhoso — ou até mesmo impossível — a menos que enriqueçamos sua 
+lógica central com axiomas adicionais.
+
+Por exemplo, as asserções de igualdade que vimos até agora dizem respeito 
+principalmente a elementos de tipos indutivos (nat, bool, etc.). Mas, como o 
+operador de igualdade do Rocq é polimórfico, podemos usá-lo em qualquer tipo — 
+em particular, podemos escrever proposições afirmando que duas funções são 
+iguais entre si: Em certos casos, o Rocq consegue provar com sucesso 
+proposições de igualdade afirmando que duas funções são iguais entre si: *)
+
+Example igualdade_funcoes_ex1 :
+  (fun x => 3 + x) = (fun x => (pred 4) + x).
+
+Proof. reflexivity. Qed.
+
+(* Isso funciona quando o Rocq consegue simplificar as funções para a mesma 
+expressão, mas isso nem sempre acontece.
+
+Estas duas funções são iguais apenas por simplificação, mas, em geral, as 
+funções podem ser iguais por motivos mais interessantes.
+
+Na prática matemática comum, duas funções f e g são consideradas iguais se 
+produzirem a mesma saída para cada entrada:
+(∀ x, f x = g x) → f = g 
+Isso é conhecido como o princípio da extensionalidade funcional.
+(Informalmente, uma propriedade ''extensional'' é aquela que diz respeito ao 
+comportamento observável de um objeto. Portanto, a extensionalidade funcional 
+significa simplesmente que a identidade de uma função é completamente 
+determinada pelo que podemos observar a partir dela — ou seja, os resultados 
+que obtemos após aplicá-la.)
+
+No entanto, a extensionalidade funcional não faz parte da lógica embutida do 
+Rocq. Isso significa que algumas proposições intuitivamente óbvias não são 
+demonstráveis. *)
+
+Example igualdade_funcoes_ex2 :
+  (fun x => plus x 1) = (fun x => plus 1 x).
+
+Proof.
+  Fail reflexivity. Fail rewrite add_comutativo.
+  (* Ficamos travados *)
+Abort.
+
+(* No entanto, se quisermos, podemos adicionar a extensionalidade funcional ao 
+Rocq usando o comando Axiom. *)
+
+Axiom extensionalidade_funcional : forall {X Y: Type}
+                                    {f g : X -> Y},
+  (forall (x:X), f x = g x) -> f = g.
+
+(* Definir algo como um Axiom tem o mesmo efeito que declarar um teorema e 
+pular sua prova usando Admitted, mas isso alerta o leitor de que isso não é 
+apenas algo em que vamos voltar e preencher mais tarde!
+
+Agora podemos invocar a extensionalidade funcional em provas: *)
+
+Example igualdade_funcoes_ex2 :
+  (fun x => plus x 1) = (fun x => plus 1 x).
+
+Proof.
+  apply extensionalidade_funcional. intros x.
+  apply add_comutativo.
+Qed.
+
+(* Naturalmente, precisamos ser bastante cuidadosos ao adicionar novos axiomas 
+à lógica do Rocq, pois isso pode torná-la inconsistente — ou seja, pode se 
+tornar possível provar qualquer proposição, incluindo o Falso, 2+2=5, etc.!
+
+Em geral, não há uma maneira simples de saber se é seguro adicionar um axioma: 
+muitas vezes é necessário o trabalho árduo de matemáticos altamente treinados 
+para estabelecer a consistência de qualquer combinação particular de axiomas.
+
+Felizmente, sabe-se que adicionar a extensionalidade funcional, em particular, 
+é consistente.
+
+Para verificar se uma prova específica depende de algum axioma adicional, use o 
+comando Print Assumptions (Imprimir Premissas): *)
+
+Print Assumptions igualdade_funcoes_ex2.
+(* ===>
+     Axioms:
+     extensionalidade_funcional :
+         forall (X Y : Type) (f g : X -> Y),
+                (forall x : X, f x = g x) -> f = g *)
+
+(* (Se você testar isso por conta própria, também poderá ver add_comutativo 
+listado como uma premissa/suposição, dependendo de a cópia de a_MaisTaticas.v 
+no diretório local estar com a prova de add_comutativo preenchida ou não.) *)
+
+(* Exercício *)
+(* Um problema com a definição da função que inverte listas rev que temos é 
+que ela realiza uma chamada a app (juntar) a cada passo. Executar app leva um 
+tempo assintoticamente linear no tamanho da lista, o que significa que rev é 
+assintoticamente quadrática.
+
+Podemos melhorar isso com a seguinte definição de dois argumentos: *)
+
+Fixpoint rev_juntar {X} (l1 l2 : list X) : list X :=
+  match l1 with
+  | [] => l2
+  | x :: l1' => rev_juntar l1' (x :: l2)
+  end.
+
+Definition tr_rev {X} (l : list X) : list X :=
+  rev_juntar l [].
+
+(* Diz-se que esta versão de rev é cauda-recursiva (tail recursive), porque a 
+chamada recursiva para a função é a última operação que precisa ser realizada 
+(ou seja, não precisamos executar ++ após a chamada recursiva); um compilador 
+decente gerará código muito eficiente nesse caso.
+
+Prove que as duas definições são de fato equivalentes. *)
+
+(* juntar_nil_r e juntar_assoc como teoremas auxiliares - em Polimorfismo *)
+Theorem juntar_nil_r : forall (X : Type), forall l : list X,
+  l ++ [] = l.
+
+Proof.
+  intros X l.
+  induction l.
+  - reflexivity.
+  - simpl. rewrite IHl. reflexivity.
+Qed.
+
+Theorem juntar_assoc : forall X (lst1 lst2 lst3 : list X),
+   lst1 ++ lst2 ++ lst3 = (lst1 ++ lst2) ++ lst3.
+
+Proof.
+   intros X lst1 lst2 lst3. induction lst1 as [ | h1 t1].
+   - simpl. reflexivity.
+   - simpl. rewrite IHt1. reflexivity.
+Qed.
+
+Theorem tr_rev_correto : forall X, @tr_rev X = @rev X.
+
+Proof.
+  intros X. unfold tr_rev. apply extensionalidade_funcional. intros x.
+  assert (H: forall acc, rev_juntar x acc = rev x ++ acc). {
+     induction x as [ | h t IH].
+     - intros acc. reflexivity.
+     - intros acc. simpl. rewrite IH. rewrite <- juntar_assoc. reflexivity.
+  }      
+   - rewrite (H []). apply juntar_nil_r.
+Qed.
+
+(********************** Lógica Clássica vs. Construtiva *********************)
+
+(* Vimos que não é possível testar se uma proposição P é verdadeira ou falsa 
+enquanto definimos uma função do Rocq. Você pode se surpreender ao saber que 
+uma restrição semelhante se aplica em provas! Em outras palavras, o seguinte 
+princípio de raciocínio intuitivo não é derivável no Rocq: *)
+
+Definition terceiro_excluido := forall P : Prop,
+  P \/ ~ P.
+
+(* Para entender operacionalmente por que isso acontece, lembre-se de que, para 
+provar uma afirmação da forma P ∨ Q , usamos as táticas left e right, que 
+efetivamente exigem saber qual lado da disjunção é verdadeiro. Mas o P 
+quantificado universalmente em terceiro_excluido é uma proposição arbitrária, 
+sobre a qual não sabemos nada. Não temos informações suficientes para escolher 
+entre aplicar left ou right. 
+
+No entanto, no caso especial em que sabemos que P é refletido em algum termo 
+booleano b, saber se ele é válido ou não é trivial: basta checar o valor de b. *)
+
+Theorem terceiro_excluido_restringido : forall P b,
+  (P <-> b = true) -> P \/ ~ P.
+
+Proof.
+  intros P [] H.
+  - left. rewrite H. reflexivity.
+  - right. unfold negacao. rewrite H. intros contra. discriminate contra.
+Qed.
+
+(* Em particular, o terceiro excluído é válido para equações n = m entre 
+números naturais n e m. *)
+
+Theorem terceiro_excluido_restringido_eq : forall (n m : nat),
+  n = m \/ n <> m.
+
+Proof.
+  intros n m.
+  apply (terceiro_excluido_restringido (n = m) (n =? m)).
+  symmetry.
+  apply eqb_eq.
+Qed.
+
+(* Infelizmente, esse truque só funciona para proposições decidíveis. 
+
+Pode parecer estranho que o princípio geral do terceiro excluído não esteja 
+disponível por padrão no Rocq, visto que ele é um recurso padrão em lógicas 
+familiares como a ZFC. Mas há uma vantagem distinta em não assumir o terceiro 
+excluído: as declarações no Rocq fazem afirmações mais fortes do que as 
+declarações análogas na matemática padrão. Notavelmente, uma prova no Rocq de 
+∃ x, P x sempre inclui um valor particular de x para o qual podemos provar P x 
+— em outras palavras, toda prova de existência é construtiva.
+
+Lógicas como a do Rocq, que não assumem o terceiro excluído, são chamadas de 
+lógicas construtivas. 
+
+Sistemas lógicos como a ZFC, nos quais o terceiro excluído de fato vale para 
+proposições arbitrárias, são chamados de clássicos. 
+
+O exemplo a seguir ilustra por que assumir o terceiro excluído pode levar a 
+provas não construtivas: 
+
+Afirmação: Existem números irracionais a e b tais que a^b (a elevado a b) é 
+racional.
+
+Prova: Não é difícil mostrar que sqrt 2 é irracional. Portanto, se 
+sqrt 2^sqrt 2 for racional, basta tomar a = b = sqrt 2 e terminamos. Caso 
+contrário, sqrt 2^sqrt 2 é irracional. Nesse caso, podemos tomar 
+a = sqrt 2^sqrt 2 e b = sqrt 2, já que a^b = sqrt 2^(sqrt 2 * sqrt 2) = 
+sqrt 2^2 = 2. ☐
+
+Você percebe o que aconteceu aqui? Usamos o terceiro excluído para considerar 
+separadamente os casos em que sqrt 2^sqrt 2 é racional e em que não é, sem 
+saber qual deles realmente é verdadeiro! Por causa disso, terminamos a prova 
+sabendo que tais a e b existem, mas sem ter certeza de seus valores reais.
+
+Por mais útil que a lógica construtiva seja, ela tem suas limitações: há muitas 
+declarações que podem ser facilmente provadas na lógica clássica, mas que 
+possuem apenas provas construtivas muito mais complicadas, e há algumas que 
+sabidamente não têm nenhuma prova construtiva! Felizmente, assim como a 
+extensionalidade funcional, sabe-se que o terceiro excluído é compatível com a 
+lógica do Rocq, permitindo-nos adicioná-lo com segurança como um axioma. No 
+entanto, não precisaremos fazer isso aqui: os resultados que cobramos no 
+Software Foundations podem ser desenvolvidos inteiramente dentro da lógica 
+construtiva com um custo extra negligenciível.
+
+É preciso alguma prática para entender quais técnicas de prova devem ser 
+evitadas no raciocínio construtivo, mas os argumentos por contradição, em 
+particular, são famosos por levarem a provas não construtivas. Eis um exemplo 
+típico: Suponha que queremos mostrar que existe um x com alguma propriedade P, 
+ou seja, tal que P x. Começamos assumindo que nossa conclusão é falsa; isto é, 
+¬ ∃ x, P x. A partir dessa premissa, não é difícil derivar forall x, ¬ P x. Se 
+conseguirmos mostrar que isso resulta em uma contradição, chegamos a uma prova 
+de existência sem jamais exibir um valor de x para o qual P x seja verdadeiro!
+
+A falha técnica aqui, de um ponto de vista construtivo, é que afirmamos provar 
+exists x, P x usando uma prova de  ¬ ¬ (∃ x, P x). Permitir-nos remover duplas 
+negações de declarações arbitrárias é equivalente a assumir a lei do terceiro 
+excluído, conforme mostrado em um dos exercícios abaixo. Assim, essa linha de 
+raciocínio não pode ser codificada no Rocq sem assumir axiomas adicionais. *)
+
+(* Exercício *)
+(* Provar a consistência do Rocq com o axioma geral do terceiro excluído requer 
+um raciocínio complexo que não pode ser realizado dentro do próprio Rocq. No 
+entanto, o teorema a seguir implica que é sempre seguro assumir um axioma de 
+decidibilidade (ou seja, uma instância do terceiro excluído) para qualquer 
+proposição específica P. Por quê? Porque a negação de tal axioma leva a uma 
+contradição. Se ¬ (P ∨ ¬P) fosse provável, então, pelo lema de_morgan_negacao_ou 
+provado acima, P ∧ ¬P seria provável, o que geraria uma contradição. Portanto, 
+é seguro adicionar P ∨ ¬P como um axioma para qualquer P em particular.
+
+De forma sucinta: para qualquer proposição P, Rocq é consistente ==> 
+Rocq + (P ∨ ¬P) é consistente. *)
+
+Theorem terceiro_excluido_irrefutavel : forall (P : Prop),
+  ~ ~ (P \/ ~ P).
+
+Proof.
+  intros P H. 
+  apply de_morgan_negacao_ou in H. destruct H as [HnP HnnP]. 
+  unfold negacao in HnnP. unfold negacao in HnP. apply HnnP. apply HnP.
+Qed.
+
+(* É um teorema da lógica clássica que as duas afirmações a seguir são 
+equivalentes:
+¬(∃ x, ¬P x)
+∀ x, P x
+O teorema dist_nao_existe acima prova um dos lados dessa equivalência. 
+Curiosamente, a outra direção não pode ser provada na lógica construtiva. Seu 
+trabalho é mostrar que ela é implicada pelo terceiro excluído. *)
+
+Theorem nao_existe_distr :
+  terceiro_excluido ->
+  forall (X:Type) (P : X -> Prop), ~ (exists x, ~ P x) -> (forall x, P x).
+
+Proof.
+  intros terceiro_excluido X P Hneq x. 
+  destruct (terceiro_excluido(P x)) as [HP | HnP].
+  - apply HP.
+  - destruct Hneq. exists x. apply HnP.
+Qed.
+
+(* Para quem gosta de um desafio, aqui está um exercício adaptado do livro 
+Coq'Art de Bertot e Casteran (p. 123). Cada uma das cinco declarações a seguir, 
+juntamente com o terceiro_excluido, pode ser considerada como caracterizadora 
+da lógica clássica. Não podemos provar nenhuma delas no Rocq, mas podemos 
+adicionar consistentemente qualquer uma delas como um axioma, caso queiramos 
+trabalhar na lógica clássica.
+
+Para ver isso, prove que todas as seis proposições (essas cinco mais o 
+terceiro_excluid) são equivalentes.
+
+Dica: Em vez de considerar todos os pares de declarações individualmente, prove 
+uma única cadeia circular de implicações que conecte todas elas. *)
+
+Definition peirce := forall P Q: Prop,
+  ((P -> Q) -> P) -> P.
+
+Definition dupla_negacao_eliminacao := forall P:Prop,
+  ~~P -> P.
+
+Definition de_morgan_nao_e_nao := forall P Q:Prop,
+  ~(~P /\ ~Q) -> P \/ Q.
+
+Definition implica_para_ou := forall P Q:Prop,
+  (P -> Q) -> (~P \/ Q).
+
+Definition consequentia_mirabilis := forall P:Prop,
+  (~P -> P) -> P.
+
+Theorem em_implica_ipo : terceiro_excluido -> implica_para_ou.
+
+Proof.
+  intros TE P Q H_imp.
+  (* Usando o terceiro_excluido aplicado em P: (EM P) *)
+  destruct (TE P) as [HP | HnP].
+  - (* Caso P seja verdadeiro *)
+    right. apply H_imp. apply HP.
+  - (* Caso P seja falso *)
+    left. apply HnP.
+Qed.
+
+Theorem ipo_implica_dm : implica_para_ou -> de_morgan_nao_e_nao.
+
+Proof.
+  intros IPO P Q Hnao.
+  (* Usamos o IPO para analisar P. Passamos a prova de que P implica P \/ Q).
+   Isso divide a prova em dois casos: ou temos ~P (HnP), ou já temos (P \/ Q) 
+   (HPQ). *)
+  destruct (IPO P (P \/ Q) (fun h => or_introl h)) as [HnP | HPQ].
+  - right.
+    (* 1. Se temos ~P, provamos que ~Q leva a uma contradição com Hnao *)
+    assert (H_nnq : ~~Q).
+    {
+      intros Hnq.
+      apply Hnao.
+      split; [exact HnP | exact Hnq].
+    }
+    (* 2. Usamos o IPO para gerar o terceiro excluído de Q ( ~Q \/ Q ) *)
+    destruct (IPO Q Q (fun x => x)) as [Hnq | HQ].
+    + (* Se ~Q é verdadeiro, gera contradição com H_nnq *)
+      exfalso. apply H_nnq. exact Hnq.
+    + (* Se Q é verdadeiro, já temos o nosso objetivo! *)
+      exact HQ.
+  - (* Se já temos (P \lor Q) diretamente *)
+    exact HPQ.
+Qed.
+
+Theorem dne_implica_peirce : dupla_negacao_eliminacao -> peirce.
+
+Proof.
+  intros DNE P Q H_peirce.
+  
+  (* Como queremos provar P, eliminamos a dupla negação. Isso significa que 
+  basta provar que a negação de P leva a um absurdo. *)
+  apply DNE.
+  intros h_nao_p.
+  
+  (* Para encontrar uma contradição com ~P, usamos a nossa hipótese H_peirce 
+  ((P -> Q) -> P). Para usá-la, precisamos fornecer uma implicação (P -> Q). *)
+  apply h_nao_p.
+  apply H_peirce.
+  intros hp.
+  
+  (* Aqui precisamos provar Q assumindo P. Como já temos P (hp) e ~P (h_not_p), 
+  exfalso para gerar qualquer coisa. *)
+  exfalso.
+  unfold negacao in h_nao_p.
+  apply h_nao_p in hp. apply hp.
+Qed.
+
+Theorem peirce_implica_cm : peirce -> consequentia_mirabilis.
+
+Proof.
+  intros Peirce P H_cm.
+  
+  (* 1. Usamos a Lei de Peirce para provar P. 
+     Como o Peirce funciona com duas proposições (P e Q), 
+     escolhemos Q como 'False' para o nosso caso. *)
+  apply Peirce with (Q := False).
+  
+  (* 2. A Lei de Peirce nos deixa assumir (P -> False), que é exatamente ~P. *)
+  intros h_nao_p.
+  
+  (* 3. Agora usamos a hipótese do Consequentia Mirabilis (H_cm), 
+     que diz que (~P -> P). Como já temos ~P (h_nao_p), basta aplicá-la! *)
+  apply H_cm.
+  unfold negacao.
+  apply h_nao_p.
+Qed.
+
+Theorem cm_implica_em : consequentia_mirabilis -> terceiro_excluido.
+
+Proof.
+  intros CM P.
+  
+  (* 1. O Consequentia Mirabilis diz que para provar P, basta provar (~P -> P). 
+     Aqui, nós queremos provar o Terceiro Excluído (P \/ ~P). 
+     Vamos aplicar o CM escolhendo a proposição como (P \/ ~P). *)
+  apply CM with (P := P \/ ~P).
+  
+  (* 2. Assumimos a negação da nossa meta: ~(P \/ ~P), e queremos provar (P \/ ~P). *)
+  intros h_nao_ou.
+  
+  (* 3. Se a negação de (P \/ ~P) é verdadeira, podemos deduzir que P é falso 
+  (~P). Por que? Porque se P fosse verdadeiro, teríamos (P \/ ~P) via 'or_introl',
+      o que contradiz h_nao_ou. *)
+  right.
+  intros hp.
+  apply h_nao_ou.
+  left.
+  apply hp.
+Qed.
+
+(* FIM DO CICLO! 
+   Como provamos Excluded Middle -> ... -> Excluded Middle, 
+   fechamos a equivalência circular entre todas as 6 leis clássicas. *)
