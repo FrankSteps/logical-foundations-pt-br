@@ -1115,7 +1115,7 @@ Proof.
       ++ apply IHl'. apply H2. apply H.
 Qed.
 
-(* Complete a definição de combine_odd_even abaixo. Ela recebe como 
+(* Complete a definição de combine_impar_par abaixo. Ela recebe como 
 argumentos duas propriedades de números, Ppar e Pimpar, e deve retornar uma 
 propriedade P tal que P n seja equivalente a Pimpar n quando n for ímpar e 
 equivalente a Ppar n caso contrário. *)

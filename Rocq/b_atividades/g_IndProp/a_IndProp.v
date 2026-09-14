@@ -4,6 +4,8 @@ Set Warnings "-notation-overridden".
 Require Import Nat.
 Require Import Coq.Lists.List.
 Import ListNotations.
+Require Import LFPTBR.a_Basico.i_Provas.
+Require Import LFPTBR.f_Logica_em_Rocq.a_Logica.
 Require Import LFPTBR.b_Inducao.a_Inducao.
 
 (******************* Proposições Indutivamente Definidas *********************)
@@ -534,11 +536,11 @@ Qed.
 
 (* Exercício *)
 Theorem ev_double : forall n,
-  ev (Nat.double n).
+  ev (double n).
 Proof.
-    intros n. unfold Nat.double. induction n as [ | n' IHn'].
+    intros n. unfold double. induction n as [ | n' IHn'].
     - apply ev_0.
-    - simpl. rewrite <- mais_n_Sm. apply ev_SS. apply IHn'.
+    - apply ev_SS. apply IHn'.
     Qed.
 
 (**************** Construindo evidências para permutações *****************)
@@ -607,3 +609,455 @@ Proof.
   Qed.
   
 (*********************** Usando evidências em provas ***********************)
+
+(* Além de construir evidências de que números são pares, também podemos 
+desconstruir tais evidências, raciocinando sobre como elas poderiam ter sido 
+construídas.
+
+Definir ev com uma declaração Inductive diz ao Rocq não apenas que os 
+construtores ev_0 e ev_SS são maneiras válidas de construir evidências de que 
+um determinado número é ev, mas também que esses dois construtores são as 
+únicas maneiras de construir evidências de que números são ev.
+
+Em outras palavras, se alguém nos der uma evidência E para a proposição ev n, 
+então sabemos que E deve ser uma de duas coisas:
+
+   - E = ev_0 e n = O, ou
+   - E = ev_SS n' E' e n = S (S n'), onde E' é uma evidência para ev n'.
+
+Isso sugere que deve ser possível analisar uma hipótese da forma ev n da mesma 
+maneira que fazemos com estruturas de dados definidas indutivamente; em 
+particular, deve ser possível argumentar seja por análise de casos, seja por 
+indução sobre essa evidência. Vejamos alguns exemplos para ver o que isso 
+significa na prática. *)
+
+(*** Desconstrução e Inversão de Evidências ***)
+
+(* Suponha que estejamos provando algum fato envolvendo um número n, e nos seja 
+dada `ev n` como hipótese. Já sabemos como realizar uma análise de casos em n 
+usando `destruct` ou `induction`, gerando submetas separadas para o caso em que 
+n = O e o caso em que n = S n' para algum n'. No entanto, para algumas provas, 
+podemos querer analisar a evidência para `ev n` diretamente.
+
+Como uma ferramenta para tais provas, podemos formalizar a caracterização 
+intuitiva que demos acima para a evidência de `ev n`, usando `destruct`. *)
+
+Lemma ev_inversao : forall (n : nat),
+    ev n ->
+    (n = 0) \/ (exists n', n = S (S n') /\ ev n').
+Proof.
+  intros n E. destruct E as [ | n' E'] eqn:EE.
+  - (* E = ev_0 : ev 0 *)
+    left. reflexivity.
+  - (* E = ev_SS n' E' : ev (S (S n')) *)
+    right. exists n'. split. reflexivity. apply E'.
+Qed.
+
+(* Fatos como este são frequentemente chamados de ''lemas de inversão'' porque 
+nos permitem ''inverter'' alguma informação dada para raciocinar sobre todas as 
+diferentes maneiras pelas quais ela poderia ter sido derivada. Aqui, há duas 
+maneiras de provar `ev n`, e o lema de inversão torna isso explícito. *)
+
+(* Exercício *)
+(* Vamos provar um lema de inversão semelhante para `le`. *)
+
+Lemma le_inversao : forall (n m : nat),
+  le n m ->
+  (n = m) \/ (exists m', m = S m' /\ le n m').
+Proof.
+  intros n m Hle.
+  (* Definição de le em Rocq:
+   le_n : forall n, le n n
+   le_S : forall n m, le n m -> le n (S m) *)
+  destruct Hle as [ | n' m' l] eqn:EL.
+  - left. reflexivity.
+  - right. exists m'. split.
+     + reflexivity.
+     + apply l.
+     Qed.
+
+(* Podemos usar o lema de inversão que provamos acima para ajudar a estruturar 
+provas: *)
+
+Theorem evSS_ev : forall n, ev (S (S n)) -> ev n.
+Proof.
+  intros n E. apply ev_inversao in E. destruct E as [H0|H1].
+  - discriminate H0.
+  - destruct H1 as [n' [Hnn' E']]. injection Hnn' as Hnn'.
+    rewrite Hnn'. apply E'.
+Qed.
+
+(* Observe como o lema de inversão produz duas submetas, que 
+correspondem às duas maneiras de provar `ev`. A primeira 
+submeta é uma contradição que é descartada com `discriminate`. 
+A segunda submeta faz uso de `injection` e `rewrite`.
+
+O Rocq fornece uma tática útil chamada `inversion` que isola 
+esse padrão comum, nos poupando do trabalho de declarar e 
+provar explicitamente um lema de inversão para cada definição 
+`Inductive` que fazemos.
+
+Aqui, a tática `inversion` consegue detectar (1) que o 
+primeiro caso, onde n = 0, não se aplica e (2) que o n' que 
+aparece no caso `ev_SS` deve ser o mesmo que n. Ela inclui 
+uma anotação ''as'' semelhante ao `destruct`, permitindo-nos 
+atribuir nomes em vez de deixar que o Rocq os escolha. *)
+
+Theorem evSS_ev' : forall n,
+  ev (S (S n)) -> ev n.
+Proof.
+  intros n E. inversion E as [ | n' E' Hnn'].
+  (* Nós estamos no caso E = ev_SS n' E' agora. *)
+  apply E'.
+Qed.
+
+(* A tática inversion pode aplicar o princípio da explosão a hipóteses 
+''obviamente contraditórias'' envolvendo propriedades definidas indutivamente, 
+algo que exige um pouco mais de trabalho ao usar nosso lema de inversão. Compare: *)
+
+Theorem um_nao_e_par : ~ ev 1.
+Proof.
+  intros H. apply ev_inversao in H. destruct H as [ | [m [Hm _]]].
+  - discriminate H.
+  - discriminate Hm.
+Qed.
+
+Theorem um_nao_e_par' : ~ ev 1.
+Proof. intros H. inversion H. Qed.
+
+(* Exercício *)
+(* Prove o seguinte resultado usando inversion. (Para praticar mais, você também 
+pode prová-lo usando o lema de inversão.) *)
+
+Theorem SSSSev__par : forall n,
+  ev (S (S (S (S n)))) -> ev n.
+Proof.
+  intros n H. inversion H as [ |n' Hev]. 
+  apply evSS_ev in Hev. apply Hev.
+  Qed.
+
+Theorem SSSSev__par' : forall n,
+  ev (S (S (S (S n)))) -> ev n.
+Proof.
+  intros n Hev4. apply ev_inversao in Hev4. destruct Hev4 as [H0 | H1].
+  - discriminate H0.
+  - destruct H1 as [n' [Hseq Hev]]. 
+    injection Hseq as Hseq. apply evSS_ev. rewrite Hseq. apply Hev.
+    Qed.
+
+(* Prove o seguinte resultado usando inversion. *)
+
+Theorem ev5_sem_sentido :
+  ev 5 -> 2 + 2 = 9.
+Proof.
+  intros Hev5. inversion Hev5 as [ |n' Hev3].
+  inversion Hev3 as [ | n'' Hev1].
+  inversion Hev1.
+  Qed.
+
+(* A tática `inversion` realiza bastante trabalho. Por exemplo, quando aplicada 
+a uma hipótese de igualdade, ela executa o trabalho tanto de `discriminate` 
+quanto de `injection`. Além disso, ela realiza os comandos `intros` e `rewrites` 
+que tipicamente são necessários no caso de `injection`. Ela também pode ser 
+aplicada para analisar evidências de proposições definidas indutivamente 
+arbitrárias, e não apenas igualdade. Como exemplos, vamos usá-la para reprovar 
+alguns teoremas do capítulo de Mais_Taticas_Basicas. (Aqui estamos sendo um 
+pouco preguiçosos ao omitir a cláusula `as` do `inversion`, pedindo assim que o 
+Rocq escolha os nomes para as variáveis e hipóteses que ele introduz.) *)
+
+Theorem inversao_ex1 : forall (n m o : nat),
+  [n; m] = [o; o] -> [n] = [m].
+Proof.
+  intros n m o H. inversion H. reflexivity. Qed.
+
+Theorem inversao_ex2 : forall (n : nat),
+  S n = O -> 2 + 2 = 5.
+Proof.
+  intros n contra. inversion contra. Qed.
+
+(* Eis como a inversão funciona em geral. 
+
+ - Suponha que o nome H se refira a uma hipótese P no contexto atual, onde P 
+   foi definido por uma declaração Inductive.
+
+ - Então, para cada um dos construtores de P, inversion H gera uma submeta na 
+   qual H foi substituído pelas condições específicas sob as quais esse 
+   construtor poderia ter sido usado para provar P.
+   
+ - Algumas dessas submetas serão autocontraditórias; a inversão as descarta.
+
+ - As que restam representam os casos que devem ser provados para estabelecer a 
+   meta original. Para essas, a inversão adiciona ao contexto de prova todas as 
+   equações que devem valer para os argumentos fornecidos a P — por exemplo, n' 
+   = n na prova de evSS_ev).
+   
+O exercício ev_double acima nos permite mostrar facilmente que nossa nova noção 
+de paridade é implicada pelas duas anteriores (já que, por par_bool_prop no 
+capítulo f_Logica_em_Rocq, já sabemos que elas são equivalentes entre si). Para 
+mostrar que todas as três coincidem, precisamos apenas do seguinte lema. *)
+
+Lemma ev_Par_primeira_tentativa : forall n,
+  ev n -> Par n.
+Proof.
+  (* TRABALHADO EM AULA *) 
+  unfold Par. intros n E.
+
+(* Começamos instanciando o existencial com div2 n: *)
+  exists (div2 n).
+
+(* Resta-nos provar que n = double (div2 n) sabendo que E : ev n.
+
+Poderíamos tentar prosseguir por análise de casos ou indução sobre n. No entanto, 
+como `ev` é mencionado em E, essa estratégia parece pouco promissora, pois (como 
+já notamos antes) a hipótese de indução tratará de n-1 (que não é par!). Assim, 
+parece melhor tentar primeiro a inversão na evidência E. De fato, o primeiro 
+caso pode ser resolvido trivialmente. *)
+  inversion E as [EQ' | n' E' EQ'].
+  - (* E = ev_0 *) reflexivity.
+  - (* E = ev_SS n' E' *)
+    simpl. f_equal. f_equal.
+
+(* Infelizmente, o segundo caso é mais difícil. Precisamos mostrar que n' = 
+double (div2 n'), mas esta é apenas outra instância do fato sobre double e div2 
+que estávamos tentando provar antes, só que para n' em vez de n. 
+
+Nós temos a evidência E' : ev n', mas o que está faltando é uma hipótese de 
+indução correspondente a essa evidência.
+
+Então, estamos travados! *)
+
+  Abort.
+
+(*** Indução sobre Evidência ***)
+
+(* Se esta história parece familiar, não é coincidência: encontramos problemas 
+semelhantes no capítulo b_Inducao, ao tentar usar a análise de casos para provar 
+resultados que exigiam indução. E, mais uma vez, a solução é... indução!
+
+O comportamento da indução sobre evidência é o mesmo que o seu comportamento 
+sobre dados: faz com que o Rocq gere um subgoal para cada construtor que poderia 
+ter sido usado para construir essa evidência, ao mesmo tempo em que fornece uma 
+hipótese de indução para cada ocorrência recursiva da propriedade em questão.
+
+Para provar que uma propriedade de n vale para todos os números pares (ou seja, 
+aqueles para os quais `ev n` é verdadeiro), podemos usar indução sobre `ev n`. 
+Isso exige que provemos duas coisas, correspondendo às duas maneiras pelas quais 
+`ev n` poderia ter sido construído. Se foi construído por `ev_0`, então n = 0 e 
+a propriedade deve valer para 0. Se foi construído por `ev_SS`, então a evidência 
+de `ev n` é da forma `ev_SS n' E'`, onde n = S (S n') e E' é a evidência para 
+`ev n'`. Nesse caso, a hipótese de indução diz que a propriedade que estamos 
+tentando provar vale para n'.
+
+Vamos tentar provar esse lema novamente: *)
+
+Lemma ev_Par : forall n,
+  ev n -> Par n.
+Proof.
+  unfold Par. intros n E. exists (div2 n).
+  induction E as [ |n' E' IH].
+  - (* E = ev_0 *)
+    reflexivity.
+  - (* E = ev_SS n' E',  com IH : n' = double (div2 n') *)
+    simpl. f_equal. f_equal. apply IH.
+Qed.
+
+(* Aqui, podemos ver que o Rocq produziu uma IH que corresponde a E′, a única 
+ocorrência recursiva de ev em sua própria definição. Como E′ menciona n′, a 
+hipótese de indução fala sobre n′, em vez de n ou de algum outro número.
+
+A equivalência entre a segunda e a terceira definições de paridade agora 
+decorre. *)
+
+Theorem ev_Par_sse : forall n,
+  ev n <-> Par n.
+Proof.
+  intros n. split.
+  - (* -> *) apply ev_Par.
+  - (* <- *) unfold Par. intros [k Hk]. rewrite Hk. apply ev_double.
+Qed.
+
+(* Como veremos em capítulos posteriores, a indução sobre evidência é uma 
+técnica recorrente em muitas áreas — em particular para a formalização da 
+semântica de linguagens de programação.
+
+Os exercícios a seguir fornecem exemplos mais simples dessa técnica, para ajudar 
+você a se familiarizar com ela. *)
+
+(* Exercício *)
+
+Theorem ev_soma : forall n m, ev n -> ev m -> ev (n + m).
+Proof.
+  intros n m Hevn Hevm. induction Hevn as [ | n' Hevn' IH].
+  - apply Hevm.
+  - simpl. apply ev_SS. apply IH.
+  Qed. 
+
+Theorem ev_ev__ev : forall n m,
+  ev (n+m) -> ev n -> ev m.
+  (* Dica: Existem duas evidências sobre as quais você pode tentar fazer indução 
+     aqui. Se uma não funcionar, tente a outra. *)
+Proof.
+  intros n m Hevnm Hevn.
+  induction Hevn as [ | n' Hevn' IH].
+  - apply Hevnm.
+  - simpl in Hevnm. apply IH. apply evSS_ev in Hevnm. apply Hevnm.
+    Qed.
+
+(* Este exercício pode ser concluído sem indução ou análise de casos. No entanto, 
+você precisará de uma asserção inteligente e de alguma reescrita trabalhosa.
+Dica: (n + m) + (n + p) é par? *)
+
+Theorem ev_mais_mais : forall n m p,
+  ev (n+m) -> ev (n+p) -> ev (m+p).
+Proof.
+  intros n m p.
+
+  (* n + n é sempre par, independente de qualquer hipótese *)
+  assert (Hnn: ev (n + n)).
+  { induction n as [ | n' IH].
+    - simpl. apply ev_0.
+    - simpl. rewrite <- mais_n_Sm. apply ev_SS. apply IH. }
+
+  intros Hnm Hnp.
+
+  (* soma de dois pares é par: junta as duas hipóteses num só fato *)
+  assert (Hsum: ev ((n+m) + (n+p))).
+  { apply ev_soma. apply Hnm. apply Hnp. }
+
+  (* reorganiza (n+m)+(n+p) como (n+n)+(m+p), só trocando associação/ordem *)
+  assert (Heq: (n+m) + (n+p) = (n+n) + (m+p)).
+  { rewrite <- add_associativo.
+    rewrite (add_associativo m n p).
+    rewrite (add_comutativo m n).
+    rewrite <- (add_associativo n n (m+p)).
+    rewrite <- add_associativo.
+    reflexivity. }
+
+  (* agora Hsum já está na forma ''ev ((n+n) + (m+p))'' *)
+  rewrite Heq in Hsum.
+
+  (* cancela a parte par (n+n), sobrando só ev (m+p) *)
+  apply ev_ev__ev with (n := n+n).
+  - apply Hsum.
+  - apply Hnn.
+Qed.
+
+(*** Múltiplas Hipóteses de Indução ***)
+
+(* Relembre a definição do fecho reflexivo e transitivo de uma relação:
+
+Inductive fecho_refl_trans {X: Type} (R: X->X->Prop) : X->X->Prop :=
+  | rt_passo (x y : X) :
+      R x y ->
+      fecho_refl_trans R x y
+  | rt_refl (x : X) :
+      fecho_refl_trans R x x
+  | rt_trans (x y z : X) :
+      fecho_refl_trans R x y ->
+      fecho_refl_trans R y z ->
+      fecho_refl_trans R x z. 
+      
+Digamos que uma relação em um tipo X é diagonal se ela refina a relação de 
+identidade — ou seja, se R x y implica x = y. *)
+
+Definition eDiagonal {X : Type} (R: X -> X -> Prop) :=
+  forall x y, R x y -> x = y.
+
+(* Agora considere o seguinte lema sobre relações diagonais: *)
+Lemma fechamento_da_diagonal_e_diagonal: forall X (R: X -> X -> Prop),
+  eDiagonal R ->
+  eDiagonal (fecho_refl_trans R).
+Proof.
+  intros X R eDiag x y H.
+  induction H as [ x y H | x | x y z H IH H' IH' ].
+  (* Os dois primeiros casos correm como você esperaria... *)
+  - specialize (eDiag x y H). rewrite -> eDiag. reflexivity.
+  - reflexivity.
+  - (* ...mas algo interessante acontece aqui: há duas hipóteses de 
+     indução, IH e IH'! Se você pensar bem, não é tão estranho: 
+     estamos no caso `srt_trans`, que possui dois componentes 
+     recursivos, H, relacionando x a y, e H', relacionando y a z. 
+     Portanto, podemos querer (e de fato precisaremos) de uma hipótese 
+     de indução para H e outra para H' — chamadas aqui de IH e IH'. Em 
+     geral, o Rocq sempre gerará uma hipótese de indução por 
+     construtor recursivo do tipo sobre o qual a indução está sendo 
+     feita. *)
+   rewrite -> IH, <- IH'. reflexivity.
+Qed.
+
+(* Exercício *)
+(* Em geral, pode haver várias maneiras de definir uma propriedade 
+indutivamente. Por exemplo, aqui está uma definição alternativa 
+(ligeiramente forçada) para ev: *)
+
+Inductive ev' : nat -> Prop :=
+  | ev'_0 : ev' 0
+  | ev'_2 : ev' 2
+  | ev'_sum n m (Hn : ev' n) (Hm : ev' m) : ev' (n + m).
+
+(* Prove que esta definição é logicamente equivalente à antiga. Para 
+simplificar a prova, use a técnica (do capítulo a_Logica) de aplicar 
+teoremas a argumentos, e observe que a mesma técnica funciona com 
+construtores de proposições definidas indutivamente. *)
+
+Theorem ev'_ev : forall n, ev' n <-> ev n.
+Proof.
+  intros n. split.
+  (* -> *)
+  - intros Hev'. induction Hev' as [ | |n' m' Hn' IHn Hm' IHm].
+    + apply ev_0.
+    + apply (ev_SS _ (ev_0)).
+    + apply (ev_soma). apply IHn.  apply IHm.
+  (* <- *)
+  - intros Hev. induction Hev as [ | n' evn'].
+    + apply ev'_0.
+    + apply (ev'_sum 2 n').
+      -- apply ev'_2.
+      -- apply IHevn'.
+      Qed.
+
+(* Podemos fazer provas por indução semelhantes na relação Perm3, que 
+definimos anteriormente da seguinte forma: *)
+
+Module Perm3Relembrando.
+Inductive Perm3 {X : Type} : list X -> list X -> Prop :=
+  | perm3_troca12 (a b c : X) :
+      Perm3 [a;b;c] [b;a;c]
+  | perm3_troca23 (a b c : X) :
+      Perm3 [a;b;c] [a;c;b]
+  | perm3_trans (l1 l2 l3 : list X) :
+      Perm3 l1 l2 -> Perm3 l2 l3 -> Perm3 l1 l3.
+End Perm3Relembrando.
+
+Lemma Perm3_simetrico : forall (X : Type) (l1 l2 : list X),
+  Perm3 l1 l2 -> Perm3 l2 l1.
+Proof.
+  intros X l1 l2 E.
+  induction E as [a b c | a b c | l1 l2 l3 E12 IH12 E23 IH23].
+  - apply perm3_troca12.
+  - apply perm3_troca23.
+  - apply (perm3_trans _ l2 _).
+    + apply IH23.
+    + apply IH12.
+Qed.
+
+(* Exercìcio *)
+Lemma Perm3_In : forall (X : Type) (x : X) (l1 l2 : list X),
+    Perm3 l1 l2 -> In x l1 -> In x l2.
+Proof.
+  intros X x l1 l2 E. 
+  induction E as [ a b c| a b c | l1 l2 l3 E12 IH12 E23 IH23].
+   (* [a,b,c] -> [b,a,c] *)
+  - intros [H1 | [H3 | H4]].
+    + right. left. apply H1.
+    + left. apply H3.
+    + right. right. apply H4.
+    (* [a,b,c] -> [a,c,b] *)
+  - intros [H1 | [H2 | [H3 | H4]]].
+    + left. apply H1.
+    + right. right. left. apply H2.
+    + right. left. apply H3.
+    + right. right. right. apply H4.
+    (* transitividade *)
+  - intros H. apply IH23. apply IH12. apply H.
+  Qed.
