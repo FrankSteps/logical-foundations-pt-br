@@ -1061,3 +1061,202 @@ Proof.
     (* transitividade *)
   - intros H. apply IH23. apply IH12. apply H.
   Qed.
+
+Lemma Perm3_NaoIn : forall (X : Type) (x : X) (l1 l2 : list X),
+    Perm3 l1 l2 -> ~ In x l1 -> ~ In x l2.
+Proof.
+ intros X x l1 l2 Hp Hil1 Hil2.
+ apply Hil1.
+ apply (Perm3_In _ x l2 l1). apply Perm3_simetrico.
+ - apply Hp.
+ - apply Hil2.
+ Qed.
+
+(* Demonstrar que algo NÃO é uma permutação é bastante trabalhoso. Algumas das 
+lemas acima, como o Perm3_In, podem ser úteis para isso. *)
+
+Example Perm3_exemplo2 : ~ Perm3 [1;2;3] [1;2;4].
+Proof.
+  intros P.
+  apply (Perm3_NaoIn _ 4) in P.
+  - apply P. right. right. left. reflexivity.
+  - intros H_in. simpl in H_in.
+    destruct H_in as [H14 | [H24 | [H34 | HF]]].
+     + discriminate H14.
+     + discriminate H24.
+     + discriminate H34.
+     + apply HF.
+     Qed.
+(********************** Exercitando com Relações Indutivas *********************)  
+   
+(* Uma proposição parametrizada por um número (como ev) pode ser vista como uma 
+propriedade — ou seja, ela define um subconjunto de nat, especificamente aqueles 
+números para os quais a proposição é provável. Da mesma forma, uma proposição de 
+dois argumentos pode ser pensada como uma relação — ou seja, ela define um 
+conjunto de pares para os quais a proposição é provável. *)
+
+Module Experimento.
+
+(* Assim como as propriedades, as relações também podem ser definidas 
+indutivamente. Um exemplo útil é a relação ''menor ou igual a'' sobre números que 
+vimos brevemente acima. *)
+
+Inductive le : nat -> nat -> Prop :=
+  | le_n (n : nat) : le n n
+  | le_S (n m : nat) (H : le n m) : le n (S m).
+Notation "n <= m" := (le n m).
+
+(* (Escrevemos a definição um pouco diferente desta vez, dando nomes explícitos 
+aos argumentos dos construtores e movendo-os para a esquerda dos dois-pontos.)
+
+Provas de fatos sobre ≤ usando os construtores le_n e le_S seguem os mesmos 
+padrões que as provas sobre propriedades, como ev acima. Podemos aplicar os 
+construtores para provar metas de ≤ (por exemplo, para mostrar que 3 ≤ 3 ou 
+3 ≤ 6), e podemos usar táticas como inversion para extrair informações de 
+hipóteses de ≤ no contexto (por exemplo, para provar que (2 ≤ 1) → 2+2=5.
+
+Aqui estão algumas verificações de sanidade (sanity checks) sobre a definição. 
+(Note que, embora estes sejam o mesmo tipo de ''testes unitários'' simples que 
+fornecemos para as funções de teste que escrevemos nas primeiras aulas, devemos 
+construir suas provas explicitamente — simpl e reflexivity não funcionam, porque 
+as provas não se tratam apenas de simplificar computações.) *)
+
+Theorem teste_le1 :
+  3 <= 3.
+Proof.
+  (* TRABALHADO EM AULA  *)
+  apply le_n. Qed.
+
+Theorem teste_le2 :
+  3 <= 6.
+Proof.
+  (* TRABALHADO EM AULA *)
+  apply le_S. apply le_S. apply le_S. apply le_n. Qed.
+
+Theorem test_le3 :
+  (2 <= 1) -> 2 + 2 = 5.
+Proof.
+  (* TRABALHADO EM AULA *)
+  intros H. inversion H. inversion H2. Qed.
+
+(* A relação ''estritamente menor que'' n < m agora pode ser 
+definida em termos de le. *)
+
+Definition lt (n m : nat) := le (S n) m.
+Notation "n < m" := (lt n m).
+
+(* A operação ≥ é definida em termos de ≤. *)
+Definition ge (m n : nat) : Prop := le n m.
+Notation "m >= n" := (ge m n).
+
+End Experimento.
+
+(* A partir da definição de le, podemos descrever o comportamento 
+de destruct, inversion e induction em uma hipótese H que fornece 
+evidências da forma le e1 e2. Fazendo destruct H gerará dois 
+casos. No primeiro, e1 = e2, e ele substituirá as instâncias de 
+e2 por e1 na meta e no contexto. No segundo, e2 =S n'  para 
+algum n' para o qual le e1 n' seja válido, e ele substituirá as 
+instâncias de e2 por S n'. Fazendo inversion H removerá casos 
+impossíveis e adicionará igualdades geradas ao contexto para uso 
+posterior. Fazendo induction H vai, no segundo caso, adicionar a 
+hipótese de indução de que a meta é válida quando e2 é 
+substituído por n'.
+
+Aqui estão vários fatos sobre as relações ≤ e < de que 
+precisaremos mais adiante no curso. As provas são excelentes 
+exercícios práticos. *)
+
+(* Exercício *)
+
+Lemma le_trans : forall m n o, m <= n -> n <= o -> m <= o.
+Proof.
+  intros m n o Hmn Hno.
+  induction Hno as [|n' o' no'].
+  - apply Hmn.
+  - apply le_S. apply IHno'. apply Hmn.
+  Qed.
+
+Theorem O_le_n : forall n,
+  0 <= n.
+Proof.
+  intros n.
+  induction n as [ | n' IHn'].
+  - apply le_n.
+  - inversion IHn'.
+    + apply le_S. apply le_n.
+    + apply le_S. rewrite H1. apply IHn'.
+    Qed.
+
+Theorem n_le_m__Sn_le_Sm : forall n m,
+  n <= m -> S n <= S m.
+Proof.
+  intros n m Hnlem.
+  induction Hnlem as [ | n' m' nm'].
+  - apply le_n.
+  - apply le_S. apply IHnm'.
+  Qed.
+
+Theorem Sn_le_Sm__n_le_m : forall n m,
+  S n <= S m -> n <= m.
+Proof.
+  intros n m Hsnlesm.
+  inversion Hsnlesm.
+  - apply le_n.
+  - apply (le_trans n (S n) m).
+    + apply le_S. apply le_n.
+    + apply H1.    
+  Qed.  
+
+Theorem le_mais_l : forall a b,
+  a <= a + b.
+Proof.
+  intros a b.
+  induction a as [ | a' IHa].
+  - apply O_le_n.
+  - simpl. apply n_le_m__Sn_le_Sm. apply IHa.
+  Qed.
+
+Theorem mais_le : forall n1 n2 m,
+  n1 + n2 <= m ->
+  n1 <= m /\ n2 <= m.
+Proof.
+  intros n1 n2 m Hmais.
+  inversion Hmais.
+  - split.
+    + apply le_mais_l. 
+    + rewrite add_comutativo. apply le_mais_l.
+  - split. 
+     + rewrite H1. apply (le_trans n1 (n1 + n2) m).
+       * apply le_mais_l.
+       * apply Hmais.
+     + rewrite H1.  apply (le_trans n2 (n1 + n2) m).
+       * rewrite add_comutativo. apply le_mais_l.
+       * apply Hmais.
+  Qed.
+
+Theorem mais_le_casos : forall n m p q,
+  n + m <= p + q -> n <= p \/ m <= q.
+
+(* Dica: Pode ser mais fácil de provar por indução em n. *)
+Proof.
+  intros n.
+  induction n as [ | n' IHn].
+  - intros m p q H. 
+    left. apply O_le_n.
+  - intros m p q Hnmpq.
+    destruct p as [ | p']. 
+    + right. simpl in Hnmpq. simpl in IHn. apply le_S in Hnmpq.
+      apply Sn_le_Sm__n_le_m in Hnmpq. apply (le_trans m (n' + m) q).
+      * rewrite add_comutativo. apply le_mais_l.
+      * apply Hnmpq.
+    + simpl in Hnmpq. apply Sn_le_Sm__n_le_m in Hnmpq.
+      destruct (IHn m p' q Hnmpq) as [Hn_le_p | Hm_le_q].
+      * left. apply n_le_m__Sn_le_Sm. apply Hn_le_p.
+      * right. apply Hm_le_q.
+
+Theorem mais_le_compat_l : forall n m p,
+  n <= m ->
+  p + n <= p + m.
+Proof.
+  
