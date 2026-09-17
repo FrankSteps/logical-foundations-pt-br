@@ -8,6 +8,7 @@ Require Import LFPTBR.a_Basico.i_Provas.
 Require Import LFPTBR.f_Logica_em_Rocq.a_Logica.
 Require Import LFPTBR.b_Inducao.a_Inducao.
 
+
 (******************* Proposições Indutivamente Definidas *********************)
 
 (* No capítulo de Lógica, vimos várias maneiras de escrever proposições, 
@@ -1172,7 +1173,7 @@ exercícios práticos. *)
 Lemma le_trans : forall m n o, m <= n -> n <= o -> m <= o.
 Proof.
   intros m n o Hmn Hno.
-  induction Hno as [|n' o' no'].
+  induction Hno as [ |n' o' no'].
   - apply Hmn.
   - apply le_S. apply IHno'. apply Hmn.
   Qed.
@@ -1254,9 +1255,430 @@ Proof.
       destruct (IHn m p' q Hnmpq) as [Hn_le_p | Hm_le_q].
       * left. apply n_le_m__Sn_le_Sm. apply Hn_le_p.
       * right. apply Hm_le_q.
+      Qed.
 
-Theorem mais_le_compat_l : forall n m p,
+Theorem mais_le_compat_esquerda : forall n m p,
   n <= m ->
   p + n <= p + m.
 Proof.
+  intros n m p Hnm.
+  induction p as [ | p' IHp].
+  - simpl. apply Hnm.
+  - apply n_le_m__Sn_le_Sm in IHp. simpl. apply IHp.
+  Qed.
+
+Theorem mais_le_compat_direita : forall n m p,
+  n <= m ->
+  n + p <= m + p.
+Proof.
+  intros n m p Hnm.
+  destruct p as [ | p'].
+  - rewrite add_0_r. rewrite (add_0_r m). apply Hnm.
+  - rewrite add_comutativo. rewrite (add_comutativo m (S p')).
+    apply mais_le_compat_esquerda. apply Hnm.
+    Qed.
+
+Theorem le_mais_trans : forall n m p,
+  n <= m ->
+  n <= m + p.
+Proof.
+  intros n m p Hnm.
+  apply (le_trans n m (m + p)).
+  - apply Hnm.
+  - apply le_mais_l.
+  Qed.
+
+(* Usando as definições de ge e lt vistas anteriormente: *)
+Definition lt (n m : nat) := le (S n) m.
+Notation "n < m" := (lt n m).
+
+Definition ge (m n : nat) : Prop := le n m.
+Notation "m >= n" := (ge m n).
+
+Theorem lt_ge_casos : forall n m,
+  n < m \/ n >= m.
+Proof.
+  intros n m.
+  induction m as [ | m' IHm].
+  - right. apply O_le_n.
+  - destruct IHm as [ Hnltm | Hngem].
+    + left. unfold lt. unfold lt in Hnltm. apply n_le_m__Sn_le_Sm.
+       apply le_S in Hnltm. apply Sn_le_Sm__n_le_m in Hnltm.
+       apply Hnltm.
+    + inversion Hngem.
+       * left. unfold lt. apply le_n.
+       * right. unfold ge. apply n_le_m__Sn_le_Sm. apply H.
+  Qed. 
   
+Theorem n_lt_m__n_le_m : forall n m,
+  n < m ->
+  n <= m.
+Proof.
+  intros n m Hnm.
+  unfold lt in Hnm.
+  apply (le_trans n (S n) m).
+  - apply le_S. apply le_n.
+  - apply Hnm.
+  Qed.
+
+Theorem mais_lt : forall n1 n2 m,
+  n1 + n2 < m ->
+  n1 < m /\ n2 < m.
+Proof.
+  intros n1 n2 m Hn1n2m.
+  split.
+  - unfold lt. unfold lt in Hn1n2m. 
+    apply (le_trans (S n1) (S (n1 + n2)) m).
+    + apply n_le_m__Sn_le_Sm. apply le_mais_l.
+    + apply Hn1n2m.
+  - unfold lt. unfold lt in Hn1n2m.
+     apply (le_trans (S n2) (S (n1 + n2)) m).
+     + apply n_le_m__Sn_le_Sm. rewrite add_comutativo. apply le_mais_l.
+     + apply Hn1n2m.
+    Qed.
+
+Theorem leb_corretude : forall n m,
+  n <=? m = true -> n <= m.
+Proof.
+  intros n.
+  induction n as [ | n' IHn].
+  - intros m IHnlebm. apply O_le_n.
+  - intros m IHnlebm. destruct m as [ | m'].
+    + discriminate IHnlebm.
+    + simpl in IHnlebm.
+      apply n_le_m__Sn_le_Sm.
+      apply IHn.
+      apply IHnlebm.
+      Qed.
+
+Theorem leb_completude : forall n m,
+  n <= m ->
+  n <=? m = true.
+Proof.
+  intros n.
+  induction n as [ | n' IHn].
+  - intros m Hnlem. reflexivity.
+  - intros m Hnlem. destruct m as [ | m'].
+   + inversion Hnlem.
+   + simpl. apply IHn. apply Sn_le_Sm__n_le_m in Hnlem.
+     apply Hnlem.
+   Qed.
+
+(* Dica: As duas próximas podem ser facilmente provadas sem usar indução. *)
+
+Theorem leb_sse : forall n m,
+  n <=? m = true <-> n <= m.
+Proof.
+  intros n m.
+  split.
+  (* -> *)
+  - apply leb_corretude.
+  (* <- *)
+  - apply leb_completude.
+  Qed.
+
+Theorem leb_true_trans : forall n m o,
+  n <=? m = true -> m <=? o = true -> n <=? o = true.
+Proof.
+  intros n m o Hnm Hmo.
+  apply leb_corretude in Hnm.
+  apply leb_corretude in Hmo.
+  apply leb_completude.
+  apply (le_trans n m o).
+  - apply Hnm.
+  - apply Hmo.
+  Qed.
+  
+Module R.
+(* Exercício *)
+(* Podemos definir relações ternárias (de três lugares), relações quaternárias 
+(de quatro lugares), etc., exatamente da mesma maneira que as relações binárias. 
+Por exemplo, considere a seguinte relação ternária sobre os números: *)
+
+Inductive R : nat -> nat -> nat -> Prop :=
+  | c1 : R 0 0 0
+  | c2 m n o (H : R m n o ) : R (S m) n (S o)
+  | c3 m n o (H : R m n o ) : R m (S n) (S o)
+  | c4 m n o (H : R (S m) (S n) (S (S o))) : R m n o
+  | c5 m n o (H : R m n o ) : R n m o.
+
+(* Quais das seguintes proposições são demonstráveis?
+   - R 1 1 2 (E provável !)
+   - R 2 2 6  (Não é provável)
+
+Se removêssemos o construtor c5 da definição de R, o conjunto de proposições 
+demonstráveis mudaria? Explique sua resposta brevemente (em 1 frase).
+R: Não, pois o conjunto não muda: a comutatividade de m e n já pode ser obtida 
+aplicando os construtores c2 e c3 na ordem desejada.
+
+Se removêssemos o construtor c4 da definição de R, o conjunto de proposições 
+demonstráveis mudaria? Explique sua resposta brevemente (em 1 frase).
+R: Não, pois qualquer proposição provável já pode ser derivada partindo do caso 
+base c1 e aplicando c2 e c3 para construir os números ''para a frente'', sem 
+nunca precisar do passo de simplificação do c4.   
+*)
+
+(* Exercício *)
+(* A relação R acima na verdade codifica uma função familiar. Descubra qual é 
+essa função; depois, enuncie e prove essa equivalência no Rocq. *)
+
+Definition fR : nat -> nat -> nat :=
+  fun a b =>  a +  b.
+
+Theorem R_equiv_fR : forall m n o, R m n o <-> fR m n = o.
+Proof.
+  intros m n o. 
+  split.
+  (* -> *)
+  - intros HR. induction HR.
+    + reflexivity.
+    + simpl. rewrite IHHR. reflexivity.
+    + rewrite <- IHHR. unfold fR. rewrite mais_n_Sm. reflexivity.
+    + unfold fR. unfold fR in IHHR. simpl in IHHR. injection IHHR as H_igual.
+      * rewrite <- mais_n_Sm in H_igual. injection H_igual. intros Hmno.
+        apply Hmno.
+    + unfold fR. unfold fR in IHHR. rewrite add_comutativo. apply IHHR.
+  (* <- *)
+  - intros Heq. unfold fR in Heq.
+    generalize dependent o.
+    induction n as [ | n' IHn]; intros o Heq.
+     + (* n = 0 *)
+      rewrite add_0_r in Heq.
+      generalize dependent o.
+      induction m as [ | m' IHm]; intros o Heq.
+       * (* m = 0 *)
+        rewrite <- Heq. apply c1.
+       * (* m = S m' *)
+         rewrite <- Heq. apply c2. apply IHm. reflexivity.
+     + (* n = S n' *)
+      rewrite <- plus_n_Sm in Heq.
+      rewrite <- Heq.
+      apply c3.
+      apply IHn.
+      reflexivity.
+    Qed.
+  
+End R.
+
+(* Exercício *)
+(* Uma lista é uma subsequência de outra lista se todos os elementos da primeira 
+lista ocorrem na mesma ordem na segunda lista, possivelmente com alguns elementos 
+extras no meio. Por exemplo:
+
+        [1;2;3] 
+é uma subsequência de cada uma das listas:
+
+        [1;2;3]
+
+        [1;1;1;2;2;3]
+
+        [1;2;7;3]
+
+        [5;6;1;9;9;2;7;3;8]
+
+    Mas não é uma subsequência de nenhuma das listas:
+
+        [1;2]
+
+        [1;3]
+
+        [5;6;2;1;7;3;8]
+
+    - Defina uma proposição indutiva subseq sobre list nat que capture o que 
+    significa ser uma subsequência. Há várias maneiras corretas de fazer isso. 
+    Você deve garantir que sua definição se comporte corretamente em todos os 
+    exemplos positivos e negativos acima, mas não precisa provar isso formalmente.
+
+    - Prove subseq_refl de que a relação de subsequência é reflexiva — ou seja, 
+    qualquer lista é uma subsequência de si mesma.
+
+    - Prove subseq_app de que para quaisquer listas l1, l2 e l3, se l1 é uma 
+    subsequência de l2, então l1 também é uma subsequência de l2 ++ l3.
+
+    - (Mais difícil) Prove subseq_trans de que a relação de subsequência é 
+    transitiva — ou seja, se l1 é uma subsequência de l2 e l2 é uma subsequência 
+    de l3, então l1 é uma subsequência de l3. *)
+
+Inductive subseq : list nat -> list nat -> Prop :=
+  | subseq_nil : subseq [] []
+  | subseq_mantem (x : nat) (l1 l2 : list nat )(H: subseq l1 l2) : subseq (x:: l1)(x :: l2)
+  | subseq_pula (x : nat)(l1 l2 : list nat)(H: subseq l1 l2) : subseq l1 (x :: l2).
+
+Theorem subseq_refl : forall (l : list nat), subseq l l.
+Proof.
+  intros l. induction l as [ | h t IHl].
+  - apply subseq_nil.
+  - inversion IHl.
+    + apply subseq_mantem. apply subseq_nil.
+    + apply subseq_mantem. apply subseq_mantem. apply H1.
+    + apply subseq_mantem. rewrite H1. apply IHl.
+    Qed.
+
+
+Theorem subseq_app : forall (l1 l2 l3 : list nat),
+  subseq l1 l2 ->
+  subseq l1 (l2 ++ l3).
+Proof.
+  intros l1 l2 l3 H. 
+  induction H as [ | x l1 l2 H IH | x l1 l2 H IH].
+  - simpl. induction l3 as [ | h3 t3 IHl3].
+    + apply subseq_nil.
+    + apply subseq_pula. apply IHl3.
+  - simpl. apply subseq_mantem. apply IH.
+  - simpl. apply subseq_pula. apply IH.
+     Qed.
+
+Theorem subseq_trans : forall (l1 l2 l3 : list nat),
+  subseq l1 l2 ->
+  subseq l2 l3 ->
+  subseq l1 l3.
+Proof.
+  intros l1 l2 l3 Hl1l2 Hl2l3.
+  generalize dependent l1.
+  induction Hl2l3 as [ | x l2' l3' H IH | x l2' l3' H IH].
+
+  - (* subseq_nil *)
+    intros l1 H1. inversion H1. apply subseq_nil.
+
+  - (* subseq_mantem *)
+    intros l1 H1.
+    inversion H1 as [ | x' l1' l2'' Hrel Heq1 Heq2 | x' l1'' l2''' Hrel Heq1 Heq2 ].
+    + destruct Heq1. destruct Heq2.
+      apply subseq_mantem. apply IH. apply Hrel.
+    + destruct Heq2.
+      apply subseq_pula. apply IH. apply Hrel.
+
+  - (* subseq_pula *)
+    intros l1 H1.
+    apply subseq_pula. apply IH. apply H1.
+    Qed.
+
+(* Exercício *)
+(* Suponha que forneçamos a seguinte definição ao Rocq: 
+Inductive R : nat → list nat → Prop :=
+  | c1                    : R 0     []
+  | c2 n l (H: R n     l) : R (S n) (n :: l)
+  | c3 n l (H: R (S n) l) : R n     l.
+
+Quais das seguintes proposições são prováveis?
+
+    - R 2 [1;0] (É provável)
+
+    - R 1 [1;2;1;0] (É provável)
+
+    - R 6 [3;2;1;0] (Não é provável)
+
+*)
+
+(* Exercício *)
+(* Defina uma relação binária indutiva relacao_total que vale entre todo par de 
+números naturais. *)
+
+Inductive relacao_total : nat -> nat -> Prop :=
+  | rel_tot (n m : nat) : relacao_total n m.
+
+Theorem relacao_total_e_total: forall n m, relacao_total n m.
+Proof.
+  intros n m.
+  apply rel_tot.
+  Qed.
+
+(* Defina uma relação binária indutiva relacao_vazia (sobre números) que nunca 
+vale *)
+
+Inductive relacao_vazia : nat -> nat -> Prop := .
+
+Theorem relacao_vazia_e_vazia : forall n m, ~ relacao_vazia n m.
+  Proof.
+  intros n m.
+  intros H. inversion H.
+  Qed.
+
+(******************** Estudo de Caso: Expressões Regulares ********************)
+
+(* Muitos dos exemplos acima foram simples e — no caso da propriedade ev — até 
+um pouco artificiais. Para dar uma noção melhor do poder das proposições 
+definidas indutivamente, agora mostramos como usá-las para modelar um conceito 
+clássico em ciência da computação: expressões regulares. *)
+
+(*** Definições ***)
+
+(* Expressões regulares são uma linguagem natural para descrever conjuntos de 
+strings. A sua sintaxe é definida da seguinte forma: *)
+
+Inductive exp_reg (T : Type) : Type :=
+  | ConjuntoVazio
+  | CadeiaVazia
+  | Char (t : T)
+  | Concatenar (r1 r2 : exp_reg T)
+  | Uniao (r1 r2 : exp_reg T)
+  | Estrela (r : exp_reg T).
+
+Arguments ConjuntoVazio {T}.
+Arguments CadeiaVazia {T}.
+Arguments Char {T} _.
+Arguments Concatenar {T} _ _.
+Arguments Uniao {T} _ _.
+Arguments Estrela {T} _.
+
+(* Note que esta definição é polimórfica: expressões regulares em exp_reg T 
+descrevem cadeias com caracteres extraídos de T — que, neste exercício, 
+representamos como listas com elementos de T. 
+
+(Nota técnica: Nós nos afastamos levemente da prática padrão ao não exigir que o 
+tipo T seja finito. Isso resulta em uma teoria de expressões regulares um pouco 
+diferente, mas a diferença não é significativa para os propósitos atuais.)
+
+Nós conectamos expressões regulares e cadeias definindo quando uma expressão 
+regular casa com (matches) alguma cadeia.
+
+Informalmente, isso funciona da seguinte forma:
+
+  - A expressão regular ConjuntoVazio não casa com nenhuma cadeia.
+  - CadeiaVazia casa com a cadeia vazia [].
+  - Char x casa com a cadeia de um único caractere [x].
+  - Se er1 casa com c1, e er2 casa com c2, então Concatenar er1 er2 casa com 
+    c1 ++ c2.
+  - Se pelo menos uma entre er1 e er2 casa com c, então Uniao er1 er2 casa com c.
+  - Finalmente, se pudermos escrever alguma cadeia c como a concatenação de uma 
+    sequência de cadeias c = c_1 ++ ... ++ c_k, e a expressão er casa com cada 
+    uma das cadeias c_i, então Estrela er casa com c.
+    
+  Em particular, a sequência de cadeias pode estar vazia, de modo que Estrela er 
+  sempre casa com a cadeia vazia [], não importa qual seja er.
+
+Podemos traduzir facilmente essa intuição em um conjunto de regras, onde 
+escrevemos c =~ er para dizer que er casa com c: 
+             	 
+         ------------------- (MVazio)   
+          [] =~ EmptyStr 	
+
+   	 
+        -------------------- (MChar)                
+         [x] =~ (Char x) 
+             
+            c1 =~ er1     c2 =~ er2 
+       --------------------------------- (MConcatenar)  
+      (c1 ++ c2) =~ (Concatenar er1 er2) 	
+
+               c1 =~ er1 	
+        ------------------------- (MUniaoDireita)
+          c1 =~ (Uniao er1 er2) 	
+
+              c2 =~ er2 	
+        ------------------------- (MUniaoEsquerda)  
+          c2 =~ (Uniao er1 er2) 	
+   	
+        ---------------------- (MEstrela0)
+          [] =~ (Estrela er) 	
+
+             c1 =~ er 	
+          c2 =~ (Estrela er) 	
+       --------------------------- (MSEstrelaConcatenar)  
+       (c1 ++ c2) =~ (Estrela er) 	
+
+Isso corresponde diretamente à seguinte definição Indutiva. Usamos a notação 
+c =~ er no lugar de exp_match c er. (Ao ''reservar'' a notação antes de definir 
+o tipo Indutivo, podemos usá-la na própria definição.) *)
+
+Reserved Notation "c =~ er" (at level 80).
