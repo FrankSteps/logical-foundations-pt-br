@@ -6,7 +6,7 @@ Require Import Lia.
 Require Import Coq.Classes.Morphisms.
 Require Import Coq.Setoids.Setoid.
 
-(* LÓGICA *)
+(* LÓGICA *)z
 (* LÓGICA EM ROCQ*)
 
 (* Agora já vimos muitos exemplos de afirmações factuais (ou seja, 

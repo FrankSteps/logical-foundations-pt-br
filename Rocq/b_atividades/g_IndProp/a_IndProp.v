@@ -7,6 +7,7 @@ Import ListNotations.
 Require Import LFPTBR.a_Basico.i_Provas.
 Require Import LFPTBR.f_Logica_em_Rocq.a_Logica.
 Require Import LFPTBR.b_Inducao.a_Inducao.
+Require Import LFPTBR.d_Polimorfismo_e_Funcoes_de_Alta_Ordem.b_Funcoes_de_Alta_Ordem.
 
 
 (******************* Proposições Indutivamente Definidas *********************)
@@ -1682,3 +1683,167 @@ c =~ er no lugar de exp_match c er. (Ao ''reservar'' a notação antes de defini
 o tipo Indutivo, podemos usá-la na própria definição.) *)
 
 Reserved Notation "c =~ er" (at level 80).
+
+Inductive exp_match {T} : list T ->  exp_reg T -> Prop :=
+  | MVazio : [] =~ CadeiaVazia
+  | MChar x : [x] =~ (Char x)
+  | MConcatenar c1 er1 c2 er2
+             (H1 : c1 =~ er1)
+             (H2 : c2 =~ er2)
+           : (c1 ++ c2) =~ (Concatenar er1 er2)
+  | MUniaoEsquerda c1 er1 er2
+                (H1 : c1 =~ er1)
+              : c1 =~ (Uniao er1 er2)
+  | MUniaoDireita c2 er1 er2
+                (H2 : c2 =~ er2)
+              : c2 =~ (Uniao er1 er2)
+  | MEstrela0 er : [] =~ (Estrela er)
+  | MEstrelaConcatenar c1 c2 er
+                 (H1 : c1 =~ er)
+                 (H2 : c2 =~ (Estrela er))
+               : (c1 ++ c2) =~ (Estrela er)
+
+    where "c =~ er" := (exp_match c er).
+
+(* Note que essas regras não são exatamente iguais à intuição que fornecemos no 
+início da seção. Primeiro, não precisamos incluir uma regra afirmando 
+explicitamente que nenhuma cadeia é correspondida por ConjuntoVazio; de fato, a 
+sintaxe das definições indutivas nem sequer nos permite fornecer tal ''regra 
+negativa''. Nós simplesmente não incluímos nenhuma regra que faria com que o 
+ConjuntoVazio correspondesse a alguma cadeia.
+
+Segundo, a intuição que demos para Uniao e Estrela corresponde a dois construtores 
+cada: MUniaoEsquerda / MUniaoDireita e MEstrela0 / MEstrelaConcatenar. O resultado 
+é logicamente equivalente à intuição original, mas mais conveniente de usar no 
+Rocq, uma vez que as ocorrências recursivas de exp_match são fornecidas como 
+argumentos diretos para os construtores, facilitando a realização de indução sobre 
+a evidência. (Os exercícios exp_match_ex1 e exp_match_ex2 abaixo pedem que você 
+prove que os construtores fornecidos na declaração indutiva e aqueles que 
+surgiriam de uma transcrição mais literal da intuição são de fato equivalentes.)
+
+Vamos ilustrar essas regras com alguns exemplos. *)
+
+(*** Exemplos ***)
+Example exp_reg_ex1 : [1] =~ Char 1.
+Proof.
+  apply MChar.
+Qed.
+
+Example exp_reg_ex2 : [1; 2] =~ Concatenar (Char 1) (Char 2).
+Proof.
+  apply (MConcatenar [1]).
+  - apply MChar.
+  - apply MChar.
+Qed.
+
+(* Note como o último exemplo aplica MConcatenar diretamente à cadeia [1]. Como o 
+objetivo menciona [1; 2] em vez de [1] ++ [2], o Rocq não conseguiria descobrir 
+como dividir a cadeia por conta própria.
+
+Usando inversion, também podemos mostrar que certas cadeias não correspondem a uma 
+expressão regular: *)
+
+Example exp_reg_ex3 : ~ ([1; 2] =~ Char 1).
+Proof.
+  intros H. inversion H.
+Qed.
+
+(* Podemos definir funções auxiliares para escrever expressões regulares. A função 
+exp_reg_de_lista constrói uma expressão regular que corresponde exatamente à cadeia 
+que ela recebe como argumento: *)
+
+Fixpoint exp_reg_de_lista {T} (l : list T) :=
+  match l with
+  | [] => CadeiaVazia
+  | x :: l' => Concatenar (Char x) (exp_reg_de_lista l')
+  end.
+
+Example exp_reg_ex4 : [1; 2; 3] =~ exp_reg_de_lista [1; 2; 3].
+Proof.
+  simpl. apply (MConcatenar [1]).
+  { apply MChar. }
+  apply (MConcatenar [2]).
+  { apply MChar. }
+  apply (MConcatenar [3]).
+  { apply MChar. }
+  apply MVazio.
+Qed.
+
+(* Também podemos provar fatos gerais sobre exp_match. Por exemplo, o lema a 
+seguir mostra que toda cadeia c correspondida por er também é correspondida por 
+Estrela er. *)
+
+Lemma MEstrela1 :
+  forall T c (er : exp_reg T) ,
+    c =~ er ->
+    c =~ Estrela er.
+Proof.
+  intros T c er H.
+  rewrite <- (juntar_nil_r _ c).
+  apply MEstrelaConcatenar.
+  - apply H.
+  - apply MEstrela0.
+Qed.
+
+(* (Note o uso de juntar_nil_r para alterar o objetivo do teorema exatamente para 
+o formato esperado por MEstrelaConcatenar.) *)
+
+(* Exercício *)
+(* Os seguintes lemas mostram que a intuição sobre a correspondência fornecida no 
+início do capítulo pode ser obtida a partir da definição indutiva formal. *)
+
+Lemma ConjuntoVazio_e_vazio  : forall T (c : list T),
+  ~ (c =~ ConjuntoVazio).
+Proof.
+  intros T c H.
+  inversion H.
+  Qed.
+
+Lemma MUniao' : forall T (c : list T) (er1 er2 : exp_reg T),
+  c =~ er1 \/ c =~ er2 ->
+  c =~  Uniao er1 er2.
+Proof.
+  intros T c er1 er2 H.
+  destruct H as [Her1 | Her2].
+  - apply (MUniaoEsquerda c er1 er2 Her1).
+  - apply (MUniaoDireita c er1 er2 Her2).
+  Qed. 
+
+(* O próximo lema é enunciado em termos da função fold do capítulo sobre 
+Polimorfismo (Poly): se ss : list (list T) representa uma sequência de cadeias s_1,
+..., s_n, então fold app ss [] é o resultado de concatenar todas elas juntas. *)
+
+Definition juntar {T : Type} (l1 l2 : list T) : list T :=
+  l1 ++ l2.
+
+Lemma MEstrela' : forall T (cc : list (list T)) (er : exp_reg T),
+  (forall c, In c cc -> c =~ er) ->
+  fold juntar cc [] =~ Estrela er. 
+Proof.
+  intros T cc er H.
+  induction cc as [ | h t IHcc].
+  - simpl. apply MEstrela0.
+  - simpl. apply (MEstrelaConcatenar h (fold juntar t [])).
+    + apply H. simpl. left. reflexivity.
+    + apply IHcc. intros c HIn. apply H. simpl. right. apply HIn.
+    Qed. 
+
+(* Exercício *)
+(* Acontece que o construtor CadeiaVazia na verdade não é necessário, já que a 
+expressão regular que corresponde à cadeia vazia também pode ser definida a partir 
+de Estrela e ConjuntoVazio: *)
+
+Definition CadeiaVazia' {T:Type} := @Estrela T (ConjuntoVazio).
+
+(* Enuncie e prove que esta definição de CadeiaVazia' corresponde exatamente às 
+mesmas cadeias que o construtor CadeiaVazia. *)
+Lemma cadeia_vazia_equiv : forall T (c : list T),
+  c =~ CadeiaVazia <-> c =~ CadeiaVazia'.
+Proof.
+  intros T c.
+  split.
+  - intros H. inversion H. unfold CadeiaVazia'. apply MEstrela0.
+  - intros H. inversion H. 
+    + apply MVazio.
+    + inversion H2.
+    Qed.
