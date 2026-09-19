@@ -1847,3 +1847,432 @@ Proof.
     + apply MVazio.
     + inversion H2.
     Qed.
+
+(* Como a definição de exp_match tem uma estrutura recursiva, podemos esperar que 
+provas envolvendo expressões regulares frequentemente exijam indução sobre evidências.
+
+Por exemplo, suponha que queiramos provar o seguinte fato intuitivo que é verdadeiro 
+em nosso cenário simples: Se uma cadeia c for combinada (matched) por uma expressão 
+regular er, então todos os elementos de c devem ocorrer como literais de caractere 
+em algum lugar de er.
+
+Para enunciar isso como um teorema, primeiro definimos uma função er_chars que lista 
+todos os caracteres que ocorrem em uma expressão regular: *)
+
+Fixpoint er_chars {T} (er : exp_reg T) : list T :=
+  match er with
+  | ConjuntoVazio => []
+  | CadeiaVazia => []
+  | Char x => [x]
+  | Concatenar er1 er2 => er_chars er1 ++ er_chars er2
+  | Uniao er1 er2 => er_chars er1 ++ er_chars er2
+  | Estrela er => er_chars er
+  end.
+
+(* Agora, o teorema principal: *)
+
+Theorem in_re_match : forall T (c : list T) (er : exp_reg T) (x : T),
+  c =~ er ->
+  In x c ->
+  In x (er_chars er).
+Proof.
+  intros T c er x Hmatch Hin.
+  induction Hmatch
+    as [ | x'
+         | c1 er1 c2 er2 Hmatch1 IH1 Hmatch2 IH2
+         | c1 er1 er2 Hmatch IH | c2 er1 er2 Hmatch IH
+         | er | c1 c2 er Hmatch1 IH1 Hmatch2 IH2].
+  (* TRABALHADO EM AULA *)
+  - (* MVazio *)
+    simpl in Hin. destruct Hin.
+  - (* MChar *)
+    simpl. simpl in Hin.
+    apply Hin.
+  - (* MConcatenar *)
+    simpl.
+
+(* Algo interessante acontece no caso MConcatenar. Nós obtemos duas hipóteses de 
+indução: Uma que se aplica quando x ocorre em c1 (que é combinada por er1), e uma 
+segunda que se aplica quando x ocorre em c2 (combinada por er2).*)
+
+    rewrite In_juntar_sse in *.
+    destruct Hin as [Hin | Hin].
+    + (* In x s1 *)
+      left. apply (IH1 Hin).
+    + (* In x s2 *)
+      right. apply (IH2 Hin).
+  - (* MUniaoEsquerda *)
+    simpl. rewrite In_juntar_sse.
+    left. apply (IH Hin).
+  - (* MUniaoDireita *)
+    simpl. rewrite In_juntar_sse.
+    right. apply (IH Hin).
+  - (* MEstrela0 *)
+    destruct Hin.
+  - (* MEstrelaConcatenar *)
+    simpl.
+
+(* Aqui novamente obtemos duas hipóteses de indução, e elas ilustram por que 
+precisamos de indução sobre evidências para exp_match, em vez de indução sobre a 
+expressão regular er: esta última forneceria apenas uma hipótese de indução para 
+cadeia que combinam com er, o que não nos permitiria raciocinar sobre o caso In x c2, 
+onde c2 combina apenas com Estrela er e não com er. *)
+    rewrite In_juntar_sse in Hin.
+    destruct Hin as [Hin | Hin].
+    + (* In x s1 *)
+      apply (IH1 Hin).
+    + (* In x s2 *)
+      apply (IH2 Hin).
+Qed.
+
+(* Exercício *)
+(* Escreva uma função recursiva er_nao_vazia que testa se uma expressão regular 
+combina com alguma string. Prove que sua função está correta. *)
+
+Fixpoint er_nao_vazia {T : Type} (er : exp_reg T) : bool :=
+    match er with
+    | ConjuntoVazio => false
+    | CadeiaVazia => true
+    | Char x => true
+    | Concatenar er1 er2 => er_nao_vazia er1 && er_nao_vazia er2
+    | Uniao er1 er2 => er_nao_vazia er1 || er_nao_vazia er2
+    | Estrela er => true
+    end.
+
+Lemma er_nao_vazia_correto : forall T (er : exp_reg T),
+  (exists c, c =~ er) <-> er_nao_vazia er = true.
+Proof.
+  intros T er.
+  split.
+  (* -> *)
+  - intros H. inversion H. induction H0 as [ | x'
+         | c1 er1 c2 er2 Hmatch1 IH1 Hmatch2 IH2
+         | c1 er1 er2 Hmatch IH | c2 er1 er2 Hmatch IH
+         | er | c1 c2 er Hmatch1 IH1 Hmatch2 IH2]. 
+     (* MCadeiaVazia*)
+    + simpl. reflexivity.
+     (* MChar *)
+    + simpl. reflexivity.
+    (* MConcatenar *)
+    + simpl. rewrite IH1. rewrite IH2. reflexivity .
+      * exists c2. apply Hmatch2.
+      * exists c1. apply Hmatch1.
+    (* MUniaoEsquerda *)
+    + simpl. rewrite IH. reflexivity.
+      * exists c1. apply Hmatch.
+    (* MUniaoDireita *)
+    + simpl. rewrite IH. destruct (er_nao_vazia er1).
+      * reflexivity.
+      * reflexivity.
+      * exists c2. apply Hmatch.
+    (* MEstrela0 *)
+    + reflexivity.
+    (* MEstrelaConcatenar *)
+    + reflexivity.
+   
+   (* <- *)
+   - intros H. induction  er as [ | | x' | er1 IHer1 er2 IHer2 
+         | er1 IHer1 er2 IHer2| er].
+      (* ConjuntoVazio *)
+      + discriminate H.
+      (* CadeiaVazia *)
+      + exists []. apply MVazio.
+      (* Char *)
+      + exists [x']. apply MChar.
+      (* Concatenar *)
+      + destruct (er_nao_vazia er1) eqn:E1. destruct (er_nao_vazia er2) eqn:E2. 
+        * destruct (IHer1 eq_refl) as [c1 Hmatch1]. 
+          destruct (IHer2 eq_refl) as [c2 Hmatch2].
+          exists (c1 ++ c2). apply MConcatenar. apply Hmatch1. apply Hmatch2.
+        * simpl in H. rewrite E1, E2 in H. discriminate H.
+        * simpl in H. rewrite E1 in H. discriminate H.
+      (* Uniao *)
+      + destruct (er_nao_vazia er1) eqn:E1. destruct (er_nao_vazia er2) eqn:E2. 
+        * destruct (IHer1 eq_refl) as [c1 Hmatch1]. exists c1. 
+          apply MUniaoEsquerda. apply Hmatch1.
+        * destruct (IHer1 eq_refl) as [c1 Hmatch1]. exists c1. 
+          apply MUniaoEsquerda. apply Hmatch1.
+        * destruct (er_nao_vazia er2) eqn:E2.
+          -- destruct (IHer2 eq_refl) as [c2 Hmatch2]. exists c2. 
+           apply MUniaoDireita. apply Hmatch2.
+          -- simpl in H. rewrite E1, E2 in H. discriminate H.
+      (* Estrela *)
+      + exists []. apply MEstrela0.
+    Qed.
+
+(*** A Tática remember *)
+
+(* Uma característica potencialmente confusa da tática induction é que ela permite 
+que você tente realizar uma indução sobre um termo que não é suficientemente geral. 
+O efeito disso é perder informações (assim como o destruct sem uma cláusula eqn: 
+pode fazer), deixando você incapaz de concluir a demonstração. Aqui está um exemplo: *)
+
+Lemma estrela_concatenar: forall T (c1 c2 : list T) (er : exp_reg T),
+  c1 =~ Estrela er ->
+  c2 =~ Estrela er ->
+  c1 ++ c2 =~ Estrela er.
+Proof.
+  intros T c1 c2 er H1.
+
+(* Agora, apenas fazer um inversion em H1 não nos levará muito longe nos casos 
+recursivos. (Experimente!). Portanto, precisamos de indução (sobre a evidência). 
+Aqui está uma primeira tentativa ingênua. *)
+   induction H1
+    as [ |x'|c1 er1 c2' er2 Hmatch1 IH1 Hmatch2 IH2
+        |c1 er1 er2 Hmatch IH|er1 c2' er2 Hmatch IH
+        |er''|c1 c2' er'' Hmatch1 IH1 Hmatch2 IH2].
+
+(* Mas agora, embora tenhamos sete casos (como esperaríamos pela definição de 
+exp_match), perdemos um pedaço muito importante de informação de H1: o fato de que 
+c1 correspondia a algo da forma Estrela er. Isso significa que temos que fornecer 
+demonstrações para todos os sete construtores dessa definição, mesmo que todos, 
+exceto dois deles (MEstrela0 e MEstrelaConcatenar), sejam contraditórios. Ainda 
+conseguimos fazer a demonstração passar para alguns construtores, como MVazio... *)
+     - (* MVazio *)
+    simpl. intros H. apply H.
+
+(* ... mas a maioria dos casos fica travada. Para MChar, por exemplo, devemos 
+mostrar
+
+                  c2 =~ Char x' →
+                  x'::c2 =~ Char x' 
+
+o que é claramente impossível. *)
+
+        - (* MChar. *) intros H. simpl. (* Estamos presos... *)
+Abort.
+
+(* O problema aqui é que a indução sobre uma hipótese do tipo Prop só funciona 
+corretamente com hipóteses que sejam 'totalmente gerais', ou seja, aquelas em que 
+todos os argumentos são apenas variáveis, em vez de expressões mais específicas 
+como Estrela er.
+
+(A este respeito, a indução sobre evidências se comporta mais como o destruct sem eqn 
+do que como o inversion.)
+
+Uma maneira possível, porém deselegante, de resolver esse problema é 'generalizar 
+manualmente' sobre as expressões problemáticas, adicionando hipóteses de igualdade 
+explícitas ao lema: *)
+
+Lemma estrela_concatenar: forall T (c1 c2 : list T) (er er' : exp_reg T),
+  er' = Estrela er ->
+  c1 =~ er' ->
+  c2 =~ Estrela er ->
+  c1 ++ c2 =~ Estrela er.
+
+(* Agora podemos prosseguir realizando a indução sobre a evidência diretamente, 
+porque o argumento da primeira hipótese é suficientemente geral, o que significa 
+que podemos descartar a maioria dos casos invertendo a igualdade er' = Estrela er 
+no contexto. Isso funciona, mas torna o enunciado do lema um pouco feio. Felizmente, 
+há uma maneira melhor... *)
+Abort.
+
+(* A tática remember e as x eqn:Eq faz com que o Rocq (1) substitua todas as 
+ocorrências da expressão e pela variável x, e (2) adicione uma equação Eq : x = e 
+ao contexto. Veja como podemos usá-la para demonstrar o resultado acima: *)
+
+Lemma estrela_concatenar: forall T (c1 c2 : list T) (er : exp_reg T),
+  c1 =~ Estrela er ->
+  c2 =~ Estrela er ->
+  c1 ++ c2 =~ Estrela er.
+Proof.
+  intros T c1 c2 er H1.
+  remember (Estrela er) as er' eqn:Eq.
+
+(* Agora temos Eq : er' = Estrela er *)
+  induction H1
+    as [ |x'|c1 er1 c2' er2 Hmatch1 IH1 Hmatch2 IH2
+        |c1 er1 er2 Hmatch IH|er1 c2' er2 Hmatch IH
+        |er''|c1 c2' er'' Hmatch1 IH1 Hmatch2 IH2].
+      
+(* O Eq é contraditório na maioria dos casos, o que nos permite concluir 
+imediatamente. *)
+
+  - (* MVazio *)discriminate.
+  - (* MChar *) discriminate.
+  - (* MConcatenar *) discriminate.
+  - (* MUniaoEsquerda *) discriminate.
+  - (* MUniaoDireita *) discriminate.
+
+(* Os casos interessantes são aqueles que correspondem a Estrela. *)
+  - (* MEstrela0 *)
+    intros H. apply H.
+  - (* MEstrelaConcatenar *)
+    intros H1. rewrite <- app_assoc.
+    apply MEstrelaConcatenar.
+    + apply Hmatch1.
+    + apply IH2.
+      * apply Eq.
+      * apply H1.
+
+(* Note que a hipótese de indução IH2 no caso MEstrelaConcatenar menciona uma 
+premissa adicional Estrela er'' = Estrela er, que resulta da igualdade gerada pelo 
+remember. *)
+
+Qed.
+
+(* Exercício *)
+(* O lema MEstrela'' abaixo (combinado com sua recíproca, o exercício MEstrela' 
+acima) mostra que nossa definição de exp_match para Estrela é equivalente à 
+informal dada anteriormente. *)
+
+Lemma MEstrela'' : forall T (c : list T) (er : exp_reg T),
+  c =~ Estrela er ->
+  exists cc : list (list T),
+    c = fold juntar cc []
+    /\ forall c', In c' cc -> c' =~ er.
+Proof.
+  intros T c er H1.
+  remember (Estrela er) as er' eqn:Eq.
+  induction H1 as [ |x'|c1 er1 c2' er2 Hmatch1 IH1 Hmatch2 IH2
+        |c1 er1 er2 Hmatch IH|er1 c2' er2 Hmatch IH
+        |er''|c1 c2' er'' Hmatch1 IH1 Hmatch2 IH2].
+  (* MVazio *)
+  - discriminate.
+  (* MChar *)
+  - discriminate.
+  (* MConcatenar *)
+  - discriminate.
+  (* MUniaoEsquerda *)
+  - discriminate.
+  (* MUniaoDireita *)
+  - discriminate.
+  (* MEstrela0*)
+  - exists []. simpl. split.
+    + reflexivity.
+    + intros c H. destruct H as [].
+  (* MEstrelaConcatenar *)
+  - inversion Eq. 
+    + rewrite H0 in IH1, IH2. destruct (IH2 eq_refl) as [cc [Heq Hall]].
+      * exists (c1 :: cc). split.
+        ++  simpl. rewrite <- Heq. unfold juntar. reflexivity.
+        ++ simpl. rewrite H0 in Hmatch1. intros c' H. destruct H as [H1 | H2].
+           ** rewrite <- H1. apply Hmatch1.
+           ** apply Hall. apply H2.
+Qed.
+
+(*** O Lema do Bombeamento ''Fraco'' ***)
+
+(* Um dos primeiros teoremas realmente interessantes na teoria das expressões 
+regulares é o chamado lema do bombeamento (pumping lemma), que afirma, informalmente, 
+que qualquer cadeia c suficientemente longa que corresponda a uma expressão regular 
+er pode ser 'bombeada' repetindo alguma seção intermediária de c um número 
+arbitrário de vezes para produzir uma nova cadeia que também corresponda a er. 
+Por questão de simplicidade, este exercício considera um teorema um pouco mais 
+fraco do que o normalmente enunciado em cursos de teoria de autômatos — daí o nome 
+bombeamento_fraco. A versão mais forte pode ser encontrada mais abaixo.
+
+Para começar, precisamos definir 'suficientemente longa'. Como estamos trabalhando 
+em uma lógica construtiva, na verdade precisamos ser capazes de calcular, para cada 
+expressão regular er, um comprimento mínimo para as cadeias c de modo a garantir a 
+'bombeabilidade'. *)
+
+Module Bombeamento.
+Fixpoint constante_de_bombeamento {T} (er : exp_reg T) : nat :=
+  match er with
+  | ConjuntoVazio => 1
+  | CadeiaVazia => 1
+  | Char _ => 2
+  | Concatenar er1 er2 =>
+      constante_de_bombeamento er1 + constante_de_bombeamento er2
+  | Uniao er1 er2 =>
+      constante_de_bombeamento er1 + constante_de_bombeamento er2
+  | Estrela r => constante_de_bombeamento r
+  end.
+
+(* Você pode achar estes lemas sobre a constante de bombeamento úteis ao demonstrar 
+o lema do bombeamento abaixo. *)
+
+Lemma constante_de_bombeamento_maior_igual_1 :
+  forall T (er : exp_reg T),
+    constante_de_bombeamento er >= 1.
+Proof.
+  intros T er. induction er.
+  - (* ConjuntoVazio *)
+    apply le_n.
+  - (* CadeiaVazia *)
+    apply le_n.
+  - (* Char *)
+    apply le_S. apply le_n.
+  - (* Concatenar *)
+    simpl.
+    apply le_trans with (n:=constante_de_bombeamento er1).
+    apply IHer1. apply le_mais_l.
+  - (* Uniao *)
+    simpl.
+    apply le_trans with (n:=constante_de_bombeamento er1).
+    apply IHer1. apply le_mais_l.
+  - (* Estrela *)
+    simpl. apply IHer.
+Qed.
+
+Lemma bombeamento_constante_0_falso :
+  forall T (er : exp_reg T),
+    constante_de_bombeamento er = 0 -> False.
+Proof.
+  intros T er H.
+  assert (Hp1 : constante_de_bombeamento er >= 1).
+  { apply constante_de_bombeamento_maior_igual_1. }
+  rewrite H in Hp1. inversion Hp1.
+Qed.
+
+(* Em seguida, é útil definir uma função auxiliar que repete uma cadeia 
+(concatenando-a consigo mesma) um determinado número de vezes. *)
+
+Fixpoint nconc {T} (n : nat) (l : list T) : list T :=
+  match n with
+  | 0 => []
+  | S n' => l ++ nconc n' l
+  end.
+
+(* Este lema auxiliar também pode ser útil na sua demonstração do lema do 
+bombeamento. *)
+
+Lemma nconc_mais: forall T (n m : nat) (l : list T),
+  nconc (n + m) l = nconc n l ++ nconc m l.
+Proof.
+  intros T n m l.
+  induction n as [ |n IHn].
+  - reflexivity.
+  - simpl. rewrite IHn, app_assoc. reflexivity.
+Qed.
+
+Lemma conc_estrela :
+  forall T m c1 c2 (er : exp_reg T),
+    c1 =~ er -> c2 =~ Estrela er ->
+    nconc m c1 ++ c2 =~ Estrela er.
+Proof.
+  intros T m c1 c2 er Hc1 Hc2.
+  induction m.
+  - simpl. apply Hc2.
+  - simpl. rewrite <- app_assoc. 
+    apply MEstrelaConcatenar.
+    + apply Hc1.
+    + apply IHm.
+Qed.
+
+(* O próprio lema do bombeamento (fraco) diz que, se c =~ er e se o comprimento de 
+c for pelo menos a constante de bombeamento de er, então c pode ser dividido em 
+três subcadeias c1 ++ c2 ++ c3 de tal forma que c2 pode ser repetido qualquer 
+número de vezes e o resultado, quando combinado com c1 e c3, ainda corresponderá a 
+er. Como também é garantido que c2 não é a cadeia vazia, isso nos dá uma maneira 
+(construtiva!) de gerar cadeias correspondentes a er tão longas quanto quisermos.
+
+Esta demonstração é bastante longa, então, para torná-la mais gerenciável, nós a 
+dividimos em várias subdemonstrações, que depois montamos para provar o lema 
+principal.
+
+Seu trabalho é completar as demonstrações dos lemas auxiliares; o lema principal 
+depende deles. Vários lemas sobre le (menor ou igual) que estavam em um exercício 
+opcional mais cedo neste capítulo podem ser úteis aqui — em particular, lt_ge_casos 
+e mais_le. *)
+
+Lemma bombeamento_fraco_char : forall (T : Type) (x : T),
+  constante_de_bombeamento (Char x) <= length [x] ->
+  exists c1 c2 c3 : list T,
+    [x] = c1 ++ c2 ++ c3 /\
+    c2 <> [ ] /\
+    (forall m : nat, c1 ++ nconc m c2 ++ c3 =~ Char x).
+Proof.
+  intros T x H. simpl in H. inversion H. inversion H2.
+  Qed.
