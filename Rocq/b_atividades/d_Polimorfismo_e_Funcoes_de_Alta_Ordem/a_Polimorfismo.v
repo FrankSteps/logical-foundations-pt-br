@@ -192,8 +192,8 @@ Proof.
 Qed.
 
 (* Exercício *)
-Lemma juntar_tamanho : forall (X : Type) (l1 l2 : list X),
-  length (l1 ++ l2) = length l1 + length l2.
+Lemma juntar_tamanho : forall (X : Type) (l1 l2 : lista X),
+  tamanho (l1 ++ l2) = tamanho l1 + tamanho l2.
   
 Proof.
   intros X l1 l2.

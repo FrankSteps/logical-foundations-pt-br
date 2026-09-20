@@ -131,6 +131,7 @@ Proof.
    intros n. induction n as [ | n' IHn'].
    - simpl. reflexivity.
    - rewrite IHn'. simpl. rewrite negb_involutivo. reflexivity.
+Qed.
 
 (* Provas dentro de provas *)
 (* Usando a tática assertion *)

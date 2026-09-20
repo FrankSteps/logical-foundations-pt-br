@@ -6,7 +6,7 @@ Require Import Lia.
 Require Import Coq.Classes.Morphisms.
 Require Import Coq.Setoids.Setoid.
 
-(* LÓGICA *)
+(* LÓGICA *)z
 (* LÓGICA EM ROCQ*)
 
 (* Agora já vimos muitos exemplos de afirmações factuais (ou seja, 
@@ -1115,7 +1115,7 @@ Proof.
       ++ apply IHl'. apply H2. apply H.
 Qed.
 
-(* Complete a definição de combine_odd_even abaixo. Ela recebe como 
+(* Complete a definição de combine_impar_par abaixo. Ela recebe como 
 argumentos duas propriedades de números, Ppar e Pimpar, e deve retornar uma 
 propriedade P tal que P n seja equivalente a Pimpar n quando n for ímpar e 
 equivalente a Ppar n caso contrário. *)
@@ -2218,7 +2218,7 @@ Definition implica_para_ou := forall P Q:Prop,
 Definition consequentia_mirabilis := forall P:Prop,
   (~P -> P) -> P.
 
-Theorem em_implica_ipo : terceiro_excluido -> implica_para_ou.
+Theorem te_implica_ipo : terceiro_excluido -> implica_para_ou.
 
 Proof.
   intros TE P Q H_imp.
@@ -2233,28 +2233,47 @@ Qed.
 Theorem ipo_implica_dm : implica_para_ou -> de_morgan_nao_e_nao.
 
 Proof.
-  intros IPO P Q Hnao.
-  (* Usamos o IPO para analisar P. Passamos a prova de que P implica P \/ Q).
-   Isso divide a prova em dois casos: ou temos ~P (HnP), ou já temos (P \/ Q) 
-   (HPQ). *)
-  destruct (IPO P (P \/ Q) (fun h => or_introl h)) as [HnP | HPQ].
-  - right.
-    (* 1. Se temos ~P, provamos que ~Q leva a uma contradição com Hnao *)
-    assert (H_nnq : ~~Q).
-    {
-      intros Hnq.
-      apply Hnao.
-      split; [exact HnP | exact Hnq].
-    }
-    (* 2. Usamos o IPO para gerar o terceiro excluído de Q ( ~Q \/ Q ) *)
-    destruct (IPO Q Q (fun x => x)) as [Hnq | HQ].
-    + (* Se ~Q é verdadeiro, gera contradição com H_nnq *)
-      exfalso. apply H_nnq. exact Hnq.
-    + (* Se Q é verdadeiro, já temos o nosso objetivo! *)
-      exact HQ.
-  - (* Se já temos (P \lor Q) diretamente *)
-    exact HPQ.
+  intros IPO P Q H.
+  (* A função (fun HP => or_introl HP) mostra que: se P for verdadeiro, então 
+  P \/ Q é verdadeiro. *)
+  destruct (IPO P (P \/ Q) (fun HP => or_introl HP)) as [HnP | HPQ].
+  (* Aplicamos IPO a Q e Q. Como Q implica Q, usamos a função identidade. *)
+  - destruct (IPO Q Q (fun HQ => HQ)) as [HnQ | HQ].
+    + exfalso.
+      apply H.
+      split.
+      * apply HnP.
+      * apply HnQ.
+    + apply (or_intror HQ).
+  - apply HPQ.
 Qed.
+
+Theorem dm_implica_dne :
+  de_morgan_nao_e_nao -> dupla_negacao_eliminacao.
+
+Proof.
+  intros DM P HnnP.
+    (* Precisamos provar ~(~P /\ ~False). *)
+  assert (H : ~(~P /\ ~False)).
+  {
+    (* Assumimos ~P /\ ~False. *)
+    intros Hcontra.
+    destruct Hcontra as [HnP HnFalse].
+    (* HnnP diz que ~~P. Aplicando-o a ~P,
+       obtemos uma contradição. *)
+    apply HnnP.
+    apply HnP.
+  }
+
+  (* Agora aplicamos De Morgan. *)
+  destruct (DM P False H) as [HP | HFalse].
+  - apply HP.
+
+  - exfalso.
+    apply HFalse.
+
+Qed.
+
 
 Theorem dne_implica_peirce : dupla_negacao_eliminacao -> peirce.
 
@@ -2299,7 +2318,7 @@ Proof.
   apply h_nao_p.
 Qed.
 
-Theorem cm_implica_em : consequentia_mirabilis -> terceiro_excluido.
+Theorem cm_implica_te : consequentia_mirabilis -> terceiro_excluido.
 
 Proof.
   intros CM P.

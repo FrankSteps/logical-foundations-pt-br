@@ -316,6 +316,7 @@ Example discriminate_ex3 : forall (X : Type) (x y z : X) (l j : list X),
 Proof.
   intros X x y z l j H.
   discriminate H.
+Qed.
 
 (* Para um exemplo mais útil, podemos usar discriminate para fazer uma 
 conexão entre as duas noções diferentes de igualdade (= e =?) que vimos para 

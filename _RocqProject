@@ -1,0 +1,25 @@
+-Q Rocq/b_atividades LFPTBR
+
+Rocq/b_atividades/a_Basico/a_DiasDaSemana.v
+Rocq/b_atividades/a_Basico/b_Booleanos.v
+Rocq/b_atividades/a_Basico/c_Recursao.v
+Rocq/b_atividades/a_Basico/d_Tipos.v
+Rocq/b_atividades/a_Basico/e_Tuplas.v
+Rocq/b_atividades/a_Basico/f_Module.v
+Rocq/b_atividades/a_Basico/g_Naturais.v
+Rocq/b_atividades/a_Basico/h_Exercicios.v
+Rocq/b_atividades/a_Basico/i_Provas.v
+
+Rocq/b_atividades/b_Inducao/a_Inducao.v
+
+Rocq/b_atividades/c_Dados_Estruturados/a_Pares.v
+Rocq/b_atividades/c_Dados_Estruturados/b_ListaDeNumeros.v
+
+Rocq/b_atividades/d_Polimorfismo_e_Funcoes_de_Alta_Ordem/a_Polimorfismo.v
+Rocq/b_atividades/d_Polimorfismo_e_Funcoes_de_Alta_Ordem/b_Funcoes_de_Alta_Ordem.v
+
+Rocq/b_atividades/e_Mais_Taticas_Basicas/a_MaisTaticas.v
+
+Rocq/b_atividades/f_Logica_em_Rocq/a_Logica.v
+
+Rocq/b_atividades/g_IndProp/a_IndProp.v
