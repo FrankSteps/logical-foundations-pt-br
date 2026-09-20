@@ -2276,3 +2276,135 @@ Lemma bombeamento_fraco_char : forall (T : Type) (x : T),
 Proof.
   intros T x H. simpl in H. inversion H. inversion H2.
   Qed.
+
+(* Lema Auxiliar - de Polimorfismo *)
+Lemma juntar_tamanho : forall (X : Type) (l1 l2 : list X),
+  length (l1 ++ l2) = length l1 + length l2.
+  
+Proof.
+  intros X l1 l2.
+  induction l1 as [ | h1 t1 IHl1].
+  - reflexivity.
+  - simpl. rewrite IHl1. reflexivity.
+Qed.
+
+(* Lema Auxiliar *)
+Lemma cancela_soma_esquerda : forall n m p,
+  n + m <= n + p -> m <= p.
+Proof.
+  induction n as [| n' IH].
+  - intros m p H. simpl in H. apply H.
+  - intros m p H. simpl in H. apply IH. apply Sn_le_Sm__n_le_m. apply H.
+Qed.
+
+Lemma bombeamento_fraco_concatenar : forall (T : Type)
+                         (c1 c2 : list T) (er1 er2 : exp_reg T),
+  c1 =~ er1 ->
+  c2 =~ er2 ->
+  (constante_de_bombeamento er1 <= length c1 ->
+  exists c2 c3 c4 : list T,
+    c1 = c2 ++ c3 ++ c4 /\
+    c3 <> [ ] /\
+    (forall m : nat, c2 ++ nconc m c3 ++ c4 =~ er1)) ->
+  (constante_de_bombeamento er2 <= length c2 ->
+    exists c1 c3 c4 : list T,
+      c2 = c1 ++ c3 ++ c4 /\
+      c3 <> [ ] /\
+      (forall m : nat, c1 ++ nconc m c3 ++ c4 =~ er2)) ->
+  constante_de_bombeamento (Concatenar er1 er2) <= length (c1 ++ c2) ->
+  exists c0 c3 c4 : list T,
+    c1 ++ c2 = c0 ++ c3 ++ c4 /\
+    c3 <> [ ] /\
+    (forall m : nat, c0 ++ nconc m c3 ++ c4 =~ Concatenar er1 er2).
+Proof.
+  simpl. intros T c1 c2 er1 er2 Hmatch1 Hmatch2 IH1 IH2 Hlen.
+  assert (H : constante_de_bombeamento er1 <= length c1 \/
+            constante_de_bombeamento er2 <= length c2).
+{
+  destruct (lt_ge_casos (constante_de_bombeamento er1) (length c1)) as [Hlt | Hge].
+  - left. apply n_lt_m__n_le_m. apply Hlt.
+  - right.
+    rewrite juntar_tamanho in Hlen.
+    apply mais_le_compat_direita with (p := constante_de_bombeamento er2) in Hge.
+    (* Hge : length c1 + constante_de_bombeamento er2
+             <= constante_de_bombeamento er1 + constante_de_bombeamento er2 *)
+    assert (Hcomb : length c1 + constante_de_bombeamento er2
+                    <= length c1 + length c2).
+    { apply (le_trans _ (constante_de_bombeamento er1 + constante_de_bombeamento er2)).
+      - apply Hge.
+      - apply Hlen. }
+    apply cancela_soma_esquerda in Hcomb.
+    apply Hcomb.
+}
+  destruct H as [Hle | Hle].
+
+- (* bomb er1 <= length c1: quebra c1 *)
+  destruct (IH1 Hle) as [c2' [c3' [c4' [Heq [Hne Hall]]]]].
+  exists c2', c3', (c4' ++ c2).
+  split.
+  + rewrite Heq.
+    rewrite app_assoc.
+    rewrite app_assoc.
+    rewrite <- app_assoc.
+    reflexivity.
+  + split.
+    * apply Hne.
+    * intros m.
+      assert (Heq2 : c2' ++ nconc m c3' ++ c4' ++ c2
+                    = (c2' ++ nconc m c3' ++ c4') ++ c2).
+      { rewrite app_assoc. rewrite app_assoc. rewrite app_assoc.
+reflexivity. }
+      rewrite Heq2.
+      apply MConcatenar.
+      -- apply Hall.
+      -- apply Hmatch2.
+
+- (* bomb er2 <= length c2: quebra c2 *)
+  destruct (IH2 Hle) as [c1' [c3' [c4' [Heq [Hne Hall]]]]].
+  exists (c1 ++ c1'), c3', c4'.
+  split.
+  + rewrite Heq.
+    rewrite app_assoc.
+    reflexivity.
+  + split.
+    * apply Hne.
+    * intros m.
+      assert (Heq2 : (c1 ++ c1') ++ nconc m c3' ++ c4'
+                    = c1 ++ (c1' ++ nconc m c3' ++ c4')).
+      { rewrite app_assoc. rewrite app_assoc. rewrite <- app_assoc.
+       reflexivity. }
+      rewrite Heq2.
+      apply MConcatenar.
+      -- apply Hmatch1.
+      -- apply Hall.
+Qed.
+  
+Lemma bombeamento_fraco_uniao_esquerda : forall T (c1 : list T) (er1 er2 : exp_reg T),
+  c1 =~ er1 ->
+  (constante_de_bombeamento er1 <= length c1 ->
+    exists c2 c3 c4 : list T,
+      c1 = c2 ++ c3 ++ c4 /\
+      c3 <> [ ] /\
+      (forall m : nat, c2 ++ nconc m c3 ++ c4 =~ er1)) ->
+  constante_de_bombeamento (Uniao er1 er2) <= length c1 ->
+  exists c0 c2 c3 : list T,
+    c1 = c0 ++ c2 ++ c3 /\
+    c2 <> [ ] /\
+    (forall m : nat, c0 ++ nconc m c2 ++ c3 =~ Uniao er1 er2).
+Proof.
+  simpl. intros T c1 er1 er2 Hmatch IH Hlen.
+  assert (H : constante_de_bombeamento er1 <= length c1).
+  {
+     apply (le_trans _ (constante_de_bombeamento er1 + constante_de_bombeamento er2)).
+     - apply le_mais_l.
+     - apply Hlen.
+  }
+   destruct (IH H) as [c2' [c3' [c4' [Heq [Hne Hall]]]]].
+   exists c2', c3', c4'.
+   split.
+   - apply Heq.
+   - split.
+    + apply Hne.
+    + intros m. apply MUniaoEsquerda. apply Hall.
+  Qed.
+  
