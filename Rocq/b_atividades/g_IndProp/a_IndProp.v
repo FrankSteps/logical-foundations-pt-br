@@ -2816,4 +2816,258 @@ reflexão para otimizar pequenos passos de prova, transformando-os em computaç�
 booleanas. *)
 
 (******************************* Exercícios Adicionais *******************************)
-      
+
+(* Formular definições indutivas de propriedades é uma habilidade importante que você 
+precisará neste curso. Tente resolver este exercício sem nenhuma ajuda. Dizemos que 
+uma lista ''gagueja'' se ela repete o mesmo elemento consecutivamente. (Isso é 
+diferente de não conter duplicatas: a sequência [1;4;1] tem duas ocorrências do 
+elemento 1, mas não gagueja.) A propriedade naogaguejar minhalista significa que 
+minhalista não gagueja. Formule uma definição indutiva para nao_gagueja. *)
+
+Inductive nao_gagueja {X:Type} : list X -> Prop :=
+  | nao_gagueja_nil : nao_gagueja []
+  | nao_gagueja_um (x : X) : nao_gagueja [x]
+  | nao_gagueja_mais_de_um (x y : X) (l : list X) : x <> y -> nao_gagueja (y :: l) ->
+    nao_gagueja (x :: y :: l).
+
+(* Certifique-se de que cada um desses testes seja bem-sucedido, mas fique à vontade 
+para alterar a prova sugerida (nos comentários) caso a fornecida não funcione para 
+você. Sua definição pode ser diferente da nossa e ainda assim estar correta, caso em 
+que os exemplos podem precisar de uma prova diferente. (Você perceberá que as provas 
+sugeridas usam várias táticas sobre as quais ainda não conversamos, para torná-las 
+mais robustas a diferentes maneiras possíveis de definir o nao_gagueja. Provavelmente 
+você pode apenas descomentar e usá-las como estão, mas também pode provar cada exemplo 
+com táticas mais básicas.) *)
+  
+Example teste_nao_gagueja_1: nao_gagueja [3;1;4;1;5;6].
+Proof.
+  repeat constructor; apply eqb_neq; auto.
+  Qed.
+
+Example teste_nao_gagueja_2: nao_gagueja (@nil nat).
+Proof.
+   repeat constructor; apply eqb_neq; auto.
+  Qed.
+  
+Example teste_nao_gagueja_3: nao_gagueja [5].
+Proof. 
+  repeat constructor; auto. Qed.
+
+Example teste_nao_gagueja_4: ~ (nao_gagueja [3;1;1;4]).
+Proof.
+  intro.
+  repeat match goal with
+    h: nao_gagueja _ |- _ => inversion h; clear h; subst
+  end.
+  contradiction; auto. Qed.
+
+(* Vamos provar que nossa definição de filter do capítulo Polimorfismo corresponde a 
+uma especificação abstrata. Aqui está a especificação, escrita informalmente em português:
+
+Uma lista l é uma 'mesclagem em ordem' (in-order merge) de l1 e l2 se ela contém todos 
+os mesmos elementos de l1 e l2, na mesma ordem que l1 e l2, mas possivelmente 
+intercalados. Por exemplo, 
+        [1;4;6;2;3] 
+é uma mesclagem em ordem de
+         [1;6;2] 
+           e 
+         [4;3].
+
+Agora, suponha que temos um conjunto X, uma função teste: X -> bool e uma lista l do 
+tipo list X. Suponha ainda que l é uma mesclagem em ordem de duas listas, l1 e l2, de 
+tal forma que cada item em l1 satisfaz o teste e nenhum item em l2 satisfaz o teste. 
+Então, filter test l = l1.
+
+Primeiro, defina o que significa para uma lista ser uma mesclagem de outras duas. 
+Faça isso usando uma relação indutiva, e não um Fixpoint. *)
+
+Inductive merge {X:Type} : list X -> list X -> list X -> Prop :=
+  | merge_nil : merge [] [] []
+  | merge_l1 (x : X) (l1 l2 l : list X) (resto : merge l1 l2 l) : 
+    merge (x :: l1) l2 (x :: l)
+  | merge_l2 (x : X) (l1 l2 l : list X) (resto : merge l1 l2 l) :
+    merge l1 (x :: l2) (x :: l).
+
+Theorem merge_filter : forall (X : Set) (teste: X -> bool) (l l1 l2 : list X),
+  merge l1 l2 l ->
+  All (fun n => teste n = true) l1 ->
+  All (fun n => teste n = false) l2 ->
+  filter teste l = l1.
+
+Proof.
+  intros X teste l l1 l2 Hmerge.
+  induction Hmerge as [ | x l1' l2' l' Hmerge' IH' | x l1' l2' l' Hmerge' IH'].
+  (* merge_nil *)
+  - intros Hallt Hallf. reflexivity.
+  (* merge_l1 *)
+  - intros Hallt Hallf.
+    simpl in Hallt. destruct Hallt as [Hx Hrestt].
+    simpl. rewrite Hx. f_equal.
+    apply (IH' Hrestt Hallf).
+  (* merge_l2 *)
+  - intros Hallt Hallf.
+    simpl in Hallf. destruct Hallf as [Hx Hrestf].
+    simpl. rewrite Hx. apply (IH' Hallt Hrestf).
+Qed.
+
+(* Uma maneira diferente de caracterizar o comportamento de filter é a seguinte: Entre 
+todas as subsequências de l com a propriedade de que o teste avalia para verdadeiro em 
+todos os seus membros, filter test l é a mais longa. Formalize essa afirmação e prove-a. *)
+
+Theorem filter_subseq_mais_longa : forall (teste : nat -> bool) (l l1 : list nat), 
+  All (fun x => teste x = true) l1 -> subseq l1 l -> length l1 <= length (filter teste l).
+
+Proof.
+  intros teste l l1 Hall Hsubseq.
+  induction Hsubseq as [ | x l' l1' H IH| x l' l1' H IH].
+  (* subseq_nil *)
+  - simpl. apply le_n.
+  (* subseq_mantem *)
+  - simpl. simpl in Hall. destruct Hall as [Hteste Hfun].
+     apply IH in Hfun. rewrite Hteste. simpl. apply n_le_m__Sn_le_Sm.
+     apply Hfun.
+  (* subseq_pula *)
+  - simpl. simpl in Hall. destruct (teste x) eqn:E.
+    + simpl. apply le_S. apply IH. apply Hall.
+    + apply IH. apply Hall.
+Qed. 
+
+(* Um palíndromo é uma sequência que se lê da mesma forma de trás para frente e de 
+frente para trás.
+
+- Defina uma proposição indutiva pal sobre a lista X que capture o que significa ser um 
+palíndromo. (Dica: Você precisará de três casos.)
+
+- Prove (pal_app_rev) que 
+    ∀ l, pal (l ++ rev l).
+
+- Prove (pal_rev) que
+    ∀ l, pal l → l = rev l.
+
+Para crédito extra, tente provar os mesmos teoremas com uma definição alternativa que
+ possua um único construtor deste tipo: 
+    ∀ l, l = rev l → pal l 
+*)
+
+Inductive pal {X:Type} : list X -> Prop :=
+  | pal_nil : pal []
+  | pal_um (x : X) : pal [x]
+  | pal_mais_de_um (x : X) (l : list X) (H : pal l): pal (x :: l ++ [x]).
+
+Theorem pal_app_rev : forall (X:Type) (l : list X),
+  pal (l ++ (rev l)).
+Proof.    
+  intros X l.
+  induction l as [ | h t IHl].
+  (* l : []*)
+  - apply pal_nil.
+  (* l : h :: t *)
+  - simpl. rewrite app_assoc. apply (pal_mais_de_um h (t ++ (rev t)) IHl).
+  Qed.
+
+Theorem pal_rev : forall (X:Type) (l: list X) , pal l -> l = rev l.
+Proof.
+  intros X l Hpal.
+  induction Hpal as [ | x | x l' H IHl'].
+  (* pal_nil *)
+  - reflexivity.
+  (* pal_um *)
+  - reflexivity.
+  (* pal_mais_de_um *)
+  - simpl. rewrite (rev_app_distr l' [x]).
+    simpl. rewrite <- IHl'. reflexivity.
+ Qed.
+
+Inductive pal_alt {X : Type} : list X -> Prop :=
+  | pal_intro : forall l, l = rev l -> pal_alt l.
+
+Theorem pal_alt_app_rev : forall (X:Type) (l : list X),
+  pal_alt (l ++ (rev l)).
+Proof.
+  intros X l.
+  induction l as [ | h t IHl].
+  (* l : *)
+  - apply pal_intro. reflexivity.
+  (* l : h :: t *)
+  - apply pal_intro. rewrite rev_app_distr. inversion IHl.
+    rewrite rev_involutive. reflexivity.
+    Qed.
+
+Theorem pal_alt_rev : forall (X:Type) (l: list X) , pal_alt l -> l = rev l.
+Proof.
+  intros X l Hpal.
+  induction Hpal as [l' IHl'].
+  apply IHl'.
+  Qed. 
+
+(* Novamente, a direção recíproca é significativamente mais difícil, devido à falta de 
+evidência. Usando a sua definição de pal do exercício anterior, prove que: 
+       ∀ l, l = rev l → pal l.
+*)
+
+Theorem palindromo_reciproco: forall (X:Type) (l: list X),
+  l = rev l -> pal l.
+Proof.
+  intros X l Heq.
+  (* Generalização com limite de tamanho n, para permitir indução forte *)
+  assert (Haux : forall n (l0 : list X), length l0 <= n -> l0 = rev l0 -> pal l0).
+{
+  induction n as [ | n' IHn].
+  - intros l0 Hlen Heq0. 
+    destruct l0 as [ | x l1].
+    (* l0 : []*)
+    + apply pal_nil.
+    (* l0 : x :: l1 *)
+    + simpl in Hlen. inversion Hlen.
+
+  - intros l0 Hlen Heq0.
+    destruct l0 as [ | x l1].
+    + apply pal_nil.
+    + revert Heq0 Hlen.
+    apply (rev_ind (fun l1 => x :: l1 = rev (x :: l1) ->
+                               length (x :: l1) <= S n' ->
+                               pal (x :: l1))).
+    * (* l1 = [] *)
+      intros Heq0 Hlen.
+      apply pal_um.
+    * (* l1 = l1' ++ [y] *)
+      intros y l1' _ Heq0 Hlen.
+      simpl in Heq0.
+      rewrite rev_app_distr in Heq0.
+      simpl in Heq0.
+      injection Heq0 as Hxy Hmid.
+      rewrite <- Hxy in Hmid.
+      apply app_inj_tail in Hmid.
+      destruct Hmid as [Hl1'rev _].
+      rewrite Hxy.
+      apply pal_mais_de_um.
+      apply (IHn l1').
+      -- simpl in Hlen.
+         rewrite length_app in Hlen. simpl in Hlen.
+         apply Sn_le_Sm__n_le_m in Hlen.
+         apply (le_trans (length l1') (length l1' + 1) n').
+         ++ apply le_mais_l.
+         ++ apply Hlen.
+      -- apply Hl1'rev.
+}
+ (* Haux no caso específico em que n é length l e l0 é l *)
+  apply (Haux (length l) l).
+  - apply le_n.
+  - apply Heq.
+  Qed.
+
+(* Relembre a definição da propriedade In do capítulo de Lógica, que afirma que um 
+valor x aparece pelo menos uma vez em uma lista l: *)
+
+Fixpoint In (A : Type) (x : A) (l : list A) : Prop :=
+     match l with
+     | [] => False
+     | x' :: l' => x' = x \/ In A x l'
+     end.
+
+(* Sua primeira tarefa é usar In para definir uma proposição disjunta X l1 l2, que deve 
+ser provável exatamente quando l1 e l2 são listas (com elementos do tipo X) que não 
+têm elementos em comum. *)
+
+Definition disjunta (X : Type) (l1 l2 : list X) : Prop :=
+  forall (x : X), In X x l1 -> ~ (In X x l2).
