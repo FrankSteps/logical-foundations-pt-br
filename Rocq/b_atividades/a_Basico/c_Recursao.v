@@ -20,7 +20,7 @@
 Fixpoint fatorial (n : nat) : nat :=
     match n with
     | 0 => 1
-    | S k => n * fatorial k
+    | S k => n * fatorial  k
     end.
 
 

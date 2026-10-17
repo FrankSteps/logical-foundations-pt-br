@@ -2,6 +2,7 @@
 
 Set Warnings "-notation-overridden".
 Require Import Nat.
+Require Import Coq.Arith.PeanoNat.
 Require Import Coq.Lists.List.
 Import ListNotations.
 Require Import LFPTBR.a_Basico.i_Provas.
@@ -2031,6 +2032,7 @@ conseguimos fazer a demonstração passar para alguns construtores, como MVazio.
      - (* MVazio *)
     simpl. intros H. apply H.
 
+
 (* ... mas a maioria dos casos fica travada. Para MChar, por exemplo, devemos 
 mostrar
 
@@ -2656,7 +2658,157 @@ Proof.
        | er | c1 c2 er Hmatch1 IH1 Hmatch2 IH2 ].
   - (* MVazio *)
     simpl. intros contra. inversion contra.
-  (* FILL IN HERE *) Admitted.
+    (* MChar *)
+  - simpl. intros contra. inversion contra. inversion H1.
+    (* MConcatenar *)
+  - simpl. destruct (lt_ge_casos (constante_de_bombeamento er1) (length c1)) as [Hle | Hlt].
+    + apply n_lt_m__n_le_m in Hle. apply IH1 in Hle. intros Hsum. 
+      destruct Hle as [sa1 [sa2 [sa3 [H_eq [H_ne [H_len H_bombeamento]]]]]].
+      exists sa1, sa2, (sa3 ++ c2). split.
+        * rewrite H_eq.
+          rewrite app_assoc. rewrite app_assoc. rewrite app_assoc.
+          reflexivity.
+        * split.
+          -- apply H_ne.
+          -- split.
+            ++ apply (le_trans (length sa1 + length sa2) (constante_de_bombeamento er1) 
+            (constante_de_bombeamento er1 + constante_de_bombeamento er2) H_len).
+            apply le_mais_l.
+            ++ intros m. rewrite app_assoc. rewrite app_assoc. apply MConcatenar.
+               ** rewrite <- app_assoc. apply (H_bombeamento m).
+               ** apply Hmatch2. 
+    + intros Hsum.
+       rewrite length_app in Hsum.
+       unfold ge in Hlt.
+      (* c2 sozinho já alcança a constante de er2 *)
+      assert (Hc2 : constante_de_bombeamento er2 <= length c2).
+        { apply (cancela_soma_esquerda (constante_de_bombeamento er1)).
+          apply (le_trans _ (length c1 + length c2)).
+          - apply Hsum.
+          - apply mais_le_compat_direita. apply Hlt. }
+      destruct (IH2 Hc2) as [s1 [s2 [s3 [Heq [Hne [Hlen Hall]]]]]].
+      (* c1 inteiro fica na frente do bloco bombeável, que vem de c2 *)
+      exists (c1 ++ s1), s2, s3.
+      split.
+      { rewrite Heq. rewrite app_assoc. reflexivity. }
+      split.
+      { apply Hne. }
+      split.
+      { rewrite length_app. rewrite <- add_associativo.
+        apply (le_trans _ (constante_de_bombeamento er1 + (length s1 + length s2))).
+        - apply mais_le_compat_direita. apply Hlt.
+        - apply mais_le_compat_esquerda. apply Hlen. }
+      intros m.
+      assert (Hrw : (c1 ++ s1) ++ nconc m s2 ++ s3 = c1 ++ s1 ++ nconc m s2 ++ s3).
+        { symmetry. apply app_assoc. }
+      rewrite Hrw.
+      apply MConcatenar.
+        * apply Hmatch1.
+        * apply Hall.
+  (* MUniaoEsquerda *)
+  - intros Hsum.
+    assert (Hle1 : constante_de_bombeamento er1 <= length c1).
+      {
+       apply (le_trans (constante_de_bombeamento er1) 
+       (constante_de_bombeamento (Uniao er1 er2)) (length c1)).
+       - simpl. apply le_mais_l.
+       - apply Hsum. 
+     }
+    apply IH in Hle1.
+    destruct Hle1 as [sc1 [sc2 [sc3 [H_eq [H_ne [H_len H_bombeamento]]]]]].
+    exists sc1, sc2, sc3.
+    split.
+      + apply H_eq.
+      + split.
+        * apply H_ne.
+        * split.
+          -- apply (le_trans (length sc1 + length sc2) 
+                (constante_de_bombeamento er1) 
+                (constante_de_bombeamento (Uniao er1 er2))).
+              apply H_len.
+              apply le_mais_l.
+          -- intros m. apply MUniaoEsquerda. apply H_bombeamento.
+  (* MUniaoDireita *)
+  - intros Hsum.
+    assert (Hle2 : constante_de_bombeamento er2 <= length c2).
+      {
+       apply (le_trans (constante_de_bombeamento er2) 
+       (constante_de_bombeamento (Uniao er1 er2)) (length c2)).
+       - simpl. rewrite add_comutativo. apply le_mais_l.
+       - apply Hsum. 
+     }
+    apply IH in Hle2.
+    destruct Hle2 as [sc1 [sc2 [sc3 [H_eq [H_ne [H_len H_bombeamento]]]]]].
+    exists sc1, sc2, sc3.
+    split.
+      + apply H_eq.
+      + split.
+        * apply H_ne.
+        * split.
+          -- apply (le_trans (length sc1 + length sc2) 
+                (constante_de_bombeamento er2) 
+                (constante_de_bombeamento (Uniao er1 er2))).
+              apply H_len. simpl. rewrite add_comutativo.
+              apply le_mais_l.
+          -- intros m. apply MUniaoDireita. apply H_bombeamento.
+  (* MEstrela0 *)
+  - assert (Hmin : 1 <= constante_de_bombeamento er).
+     {
+      induction er.
+      - simpl. apply le_n.
+      - apply le_n.
+      - apply le_S. apply le_n.
+      - apply (le_trans 1 (constante_de_bombeamento er1) 
+        (constante_de_bombeamento er1 + constante_de_bombeamento er2)).
+        + apply IHer1.
+        + apply le_mais_l.
+      - apply (le_trans 1 (constante_de_bombeamento er1) 
+        (constante_de_bombeamento er1 + constante_de_bombeamento er2)).
+        + apply IHer1.
+        + apply le_mais_l.
+      - apply IHer.
+     }
+     intros contra. inversion contra. rewrite H1 in Hmin. inversion Hmin.
+  (* MEstrelaConcatenar *)
+  - intros Hsum.
+    destruct (lt_ge_casos (constante_de_bombeamento er) (length c1)) as [Hle | Hlt].
+    + apply n_lt_m__n_le_m in Hle.
+      apply IH1 in Hle.
+      destruct Hle as [sa1 [sa2 [sa3 [H_eq [H_ne [H_len H_bombeamento]]]]]].
+      exists sa1, sa2, (sa3 ++ c2). split.
+      * rewrite H_eq. rewrite app_assoc. rewrite app_assoc. rewrite app_assoc. reflexivity.
+      * split.
+        -- apply H_ne.
+        -- simpl. split.
+            ++ apply H_len.
+            ++ intros m. rewrite app_assoc. rewrite app_assoc. apply MEstrelaConcatenar.
+                ** rewrite <- app_assoc. apply (H_bombeamento m).
+                ** apply Hmatch2.
+    + unfold ge in Hlt.
+      (* repetir c1 e depois c2 continua casando com Estrela er *)
+      assert (Hbomb : forall m, nconc m c1 ++ c2 =~ Estrela er).
+      { induction m as [ | m' IHm].
+        - simpl. apply Hmatch2.
+        - simpl. rewrite <- app_assoc.
+          apply MEstrelaConcatenar.
+          + apply Hmatch1.
+          + apply IHm. }
+      destruct c1 as [ | h c1'].
+      * (* c1 = [] : tudo vem de c2, a IH2 resolve *)
+        destruct (IH2 Hsum) as [s1 [s2 [s3 [Heq [Hne [Hlen Hall]]]]]].
+        exists s1, s2, s3.
+        split. { simpl. apply Heq. }
+        split. { apply Hne. }
+        split. { apply Hlen. }
+        apply Hall.
+      * (* c1 não-vazio e curto : o próprio c1 é o bloco bombeável *)
+        exists [], (h :: c1'), c2.
+        split. { reflexivity. }
+        split. { discriminate. }
+        split. { simpl. apply Hlt. }
+        intros m. simpl. apply (Hbomb m).
+Qed.
+
 End Bombeamento.
 
 (********************** Estudo de Caso: Aprimorando a Reflexão ********************)
@@ -3071,3 +3223,707 @@ têm elementos em comum. *)
 
 Definition disjunta (X : Type) (l1 l2 : list X) : Prop :=
   forall (x : X), In X x l1 -> ~ (In X x l2).
+
+(* Em seguida, use In para definir uma proposição indutiva NoDup X l, que deve ser 
+provável exatamente quando l for uma lista (com elementos do tipo X) na qual todos os 
+membros são diferentes entre si. Por exemplo, NoDup nat [1;2;3;4] e NoDup bool [] devem 
+ser prováveis, enquanto NoDup nat [1;2;1] e NoDup bool [true;true] não devem ser. *)
+
+Inductive NoDup {X : Type} : list X -> Prop :=
+  | NoDup_nil : NoDup []
+  | NoDup_cons (x : X) (l : list X) : ~ (In X x l) -> NoDup l -> NoDup (x :: l).
+
+(* Por fim, formule e prove um ou mais teoremas interessantes que relacionem disjunta, 
+NoDup e ++ (concatenação de listas). *)
+
+Theorem NoDup_disjunta_app : forall (X : Type) (l1 l2 : list X),
+  NoDup l1 -> NoDup l2 -> disjunta X l1 l2 -> NoDup (l1 ++ l2).
+Proof.
+  intros X l1 l2 Hndl1 Hndl2 Hdl1l2.
+  induction Hndl1 as [ | x l Hin Hnd IH].
+  - (* l1 = [] : l1++l2 = l2, já é NoDup *)
+    simpl. apply Hndl2.
+  - (* l1 = x::l : precisa x não estar em l++l2, e l++l2 ser NoDup *)
+    simpl. apply NoDup_cons.
+    + unfold negacao. intros Hin'.
+      rewrite In_juntar_sse in Hin'. destruct Hin' as [Hinl | Hinl2].
+      * apply Hin. apply Hinl. (* x em l: contradiz Hin *)
+      * apply (Hdl1l2 x).      (* x em l2: contradiz disjunção *)
+        -- simpl. left. reflexivity.
+        -- apply Hinl2.
+    + apply IH. unfold disjunta. intros y Hiny.
+      apply Hdl1l2. simpl. right. apply Hiny.
+Qed.
+
+Theorem NoDup_app_disjunta : forall (X : Type) (l1 l2 : list X),
+  NoDup (l1 ++ l2) -> disjunta X l1 l2.
+Proof.
+  intros X l1 l2 Hndl1l2.
+
+  (* Indução sobre a primeira lista *)
+  induction l1 as [ | h1 t1 IHl1].
+
+  - (* Caso base: l1 = [].  A lista vazia é disjunta de qualquer lista. *)
+    unfold disjunta. intros x Hinxnil.
+    unfold negacao. intros Hinxl2.
+    simpl in Hinxnil. apply Hinxnil.
+  - (* Caso indutivo: l1 = h1 :: t1. Pela ausência de duplicatas, h1 não aparece no 
+     restante da lista. *)
+    inversion Hndl1l2. unfold disjunta.
+    intros y Hiny. destruct Hiny as [Heq | Hin_t1].
+      + (* Caso y = h1 *)
+        intros Hin_l2. apply H1. rewrite Heq.
+        (* y pertence à concatenação se pertence a t1 ou a l2. *)
+        rewrite (In_juntar_sse X t1 l2 y).
+        right.
+        apply Hin_l2.
+      + (* Caso y pertence a t1. Usamos a hipótese de indução sobre t1 e l2. *)
+        unfold negacao. intros Hin_l2. apply ((IHl1 H2) y). apply Hin_t1. apply Hin_l2.
+Qed.
+
+(* O princípio da casa dos pombos estabelece um fato básico sobre contagem: se 
+distribuirmos mais do que n itens em n casas de pombos, alguma casa de pombos deve 
+conter pelo menos dois itens. Como costuma acontecer, esse fato aparentemente trivial 
+sobre números requer um maquinário não trivial para ser provado, mas agora temos o 
+suficiente... Primeiro, prove um lema fácil e útil. *)
+
+Lemma in_split : forall (X : Type) (x : X) (l:list X),
+  In X x l ->
+  exists l1 l2, l = l1 ++ x :: l2.
+Proof.
+  intros X x l Hin.
+  induction l as [ | h t IHl].
+  - inversion Hin.
+  - simpl in Hin. destruct Hin as [Heq | Hinxt].
+    + rewrite Heq. exists []. simpl. rewrite <- Heq. exists t. reflexivity.
+    + destruct (IHl Hinxt) as [l1 [l2 Heq]].
+      exists (h :: l1). exists l2. simpl. rewrite <- Heq. reflexivity.
+Qed.
+
+(* Agora defina uma propriedade repeats de tal forma que repeats X l afirme que l 
+contém pelo menos um elemento repetido (do tipo X).   *)
+
+Inductive repeats {X:Type} : list X  -> Prop :=
+  | repeats_head (h : X) (l : list X) :  In X h l -> repeats (h :: l)
+  | repeat_cons (x : X) (l : list X) (H : repeats l) : repeats (x :: l).
+
+(* Agora, aqui está uma maneira de formalizar o princípio da casa dos pombos. Suponha 
+que a lista l2 represente uma lista de rótulos de casas dos pombos, e a lista l1 
+represente os rótulos atribuídos a uma lista de itens. Se houver mais itens do que 
+rótulos, pelo menos dois itens devem ter o mesmo rótulo — ou seja, a lista l1 deve 
+conter repetições.
+
+Esta demonstração é muito mais fácil se você usar a hipótese do terceiro excluído para 
+mostrar que o predicado In é decidível, isto é, ∀ x l, (In x l) ∨ ¬ (In x l). No 
+entanto, também é possível fazer a demonstração funcionar sem assumir que In é 
+decidível; se você conseguir fazer isso, não precisará da hipótese do terceiro excluído. *)
+
+Theorem principio_da_casa_dos_pombos: terceiro_excluido ->
+  forall (X:Type) (l1 l2:list X),
+  (forall x, In X x l1 -> In X x l2) ->
+  length l2 < length l1 ->
+  repeats l1.
+Proof.
+  intros EM X l1. induction l1 as [ |x l1' IHl1'].
+  (* l1 : [] *)
+  - intros l2 Hin Hlt. inversion Hlt.
+  (* l1 : x :: l1' *)
+  - intros l2 Hin Hlt. unfold terceiro_excluido in EM.
+    destruct (EM (In X x l1')) as [Hp | Hnp].
+    (* x está em l1' *)
+    + apply (repeats_head x l1' Hp).
+    (* x não está em l1' - a repetição precisa estar em l1' sozinha *)
+    +  (* x precisa estar em l2, já que l1 = x::l1' mapeia inteiro em l2 *)
+      assert (Hinxl2 : In X x l2).
+      { apply Hin. simpl. left. reflexivity. }
+      (* separa l2 em antes/depois de x, para ''remover'' x de l2 *)
+      destruct (in_split X x l2 Hinxl2) as [l2a [l2b Heql2]].
+      apply repeat_cons.
+      (* aplica IH em l1' contra l2 sem o x (l2a++l2b) *)
+      apply (IHl1' (l2a ++ l2b)).
+      (* mostra que todo elemento de l1' ainda mapeia em l2a++l2b *)
+      * intros x0 Hinx0.
+        assert (Hx0l2 : In X x0 l2).
+        { apply Hin. simpl. right. apply Hinx0. }
+        rewrite Heql2 in Hx0l2.
+        apply In_juntar_sse in Hx0l2.
+        apply In_juntar_sse.
+        destruct Hx0l2 as [H1 | H2].
+        -- left. apply H1.
+        -- simpl in H2. destruct H2 as [Heqx0 | H2].
+           (* x0 = x seria absurdo: x0 está em l1', mas x não está (Hnp) *)
+           ++ exfalso. apply Hnp. rewrite Heqx0. apply Hinx0.
+           ++ right. apply H2.
+      (* mostra que l2a++l2b (sem o x removido) ainda é menor que l1' *)
+      * assert (Hlen : length l2 = length l2a + S (length l2b)).
+        { rewrite Heql2. apply length_app. }
+        rewrite length_app.
+        simpl in Hlt.
+        rewrite Hlen in Hlt.
+        rewrite <- mais_n_Sm in Hlt.
+        apply Sn_le_Sm__n_le_m in Hlt.
+        apply Hlt.
+Qed.
+
+(*** Um Casador de Expressões Regulares Verificado ***)
+
+(* Definimos agora uma relação de casamento (match) sobre expressões regulares e 
+listas polimórficas. Podemos usar tal definição para provar manualmente que uma dada 
+expressão regular casa com uma dada string, mas isso não nos fornece um programa que 
+possamos executar para determinar um casamento automaticamente.
+
+Seria razoável esperar que pudéssemos traduzir as definições das regras indutivas 
+para a construção de evidências da relação de casamento em casos de uma função 
+recursiva que reflete a relação, fazendo recursão sobre uma dada expressão regular. 
+No entanto, não parece simples definir tal função na qual a dada expressão regular seja 
+uma variável de recursão reconhecida pelo Rocq. Como resultado, o Rocq não aceitará 
+que a função sempre termine.
+
+Casadores de expressões regulares fortemente otimizados realizam o casamento 
+traduzindo uma dada expressão regular em uma máquina de estados e determinando se a 
+máquina de estados aceita uma dada string. No entanto, o casamento de expressões 
+regulares também pode ser implementado usando um algoritmo que opera puramente em 
+strings e expressões regulares, sem definir e manter tipos de dados adicionais, como 
+máquinas de estados. Implementaremos tal algoritmo e verificaremos se o seu valor 
+reflete a relação de casamento.
+
+Implementaremos um casador de expressões regulares que casa strings representadas 
+como listas de caracteres ASCII: *)
+
+From Stdlib Require Import Strings.Ascii.
+Definition string := list ascii.
+
+(* A biblioteca padrão do Rocq contém uma definição indutiva distinta de strings de 
+caracteres ASCII. No entanto, usaremos a definição de strings acima como listas de 
+caracteres ASCII para aplicar a definição existente da relação de casamento (match).
+
+Poderíamos também definir um casador de expressões regulares sobre listas polimórficas, 
+e não especificamente sobre listas de caracteres ASCII. O algoritmo de casamento que 
+implementaremos precisa ser capaz de testar a igualdade de elementos em uma dada 
+lista e, portanto, precisa receber uma função de teste de igualdade. Generalizar as 
+definições, os teoremas e as provas que definimos para tal cenário é um pouco 
+entediante, mas viável.
+
+A prova de corretude do casador de expressões regulares combinará propriedades da 
+função de casamento de expressões regulares com propriedades da relação de casamento 
+que não dependem da função de casamento. Vamos em frente e provar esta última classe 
+de propriedades agora. A maioria delas tem provas diretas, que foram fornecidas a 
+você, embora existam alguns lemas principais que foram deixados para você provar.
+
+Cada Prop provável é equivalente a True. *)
+
+Lemma equiv_true_provavel : forall (P : Prop), P -> (P <-> True).
+Proof.
+  intros.
+  split.
+  - intros. constructor.
+  - intros _. apply H.
+Qed.
+
+(* Cada Prop cuja negação é provável é equivalente a False.*)
+
+Lemma not_equiv_false : forall (P : Prop), ~P -> (P <-> False).
+Proof.
+  intros.
+  split.
+  - apply H.
+  - intros. destruct H0.
+Qed.
+
+(* O conjunto vazio não casa com nenhuma string. *)
+
+Lemma nulo_nao_casa_com_nada : forall (s : string), (s =~ ConjuntoVazio) <-> False.
+Proof.
+  intros.
+  apply not_equiv_false.
+  unfold negacao. intros. inversion H.
+Qed.
+
+(* CadeiaVazia só se casa com a cadeia vazia *)
+
+Lemma vazia_casa_com_cadv : forall (s : string), s =~ CadeiaVazia <-> s = [ ].
+Proof.
+  split.
+  - intros. inversion H. reflexivity.
+  - intros. rewrite H. apply MVazio.
+Qed.
+
+(* CadeiaVazia não casa com nenhuma cadeia não vazia. *)
+
+Lemma vazia_nao_casa_nv : forall (a : ascii) s, (a :: s =~ CadeiaVazia) <-> False.
+Proof.
+  intros.
+  apply not_equiv_false.
+  unfold negacao. intros. inversion H.
+Qed.
+
+(* Char a não casa com nenhuma cadeia que comece com um caractere diferente de a.*)
+
+Lemma char_nao_casa_char :
+  forall (a b : ascii) s, b <> a -> (b :: s =~ Char a <-> False).
+Proof.
+  intros.
+  apply not_equiv_false.
+  unfold negacao.
+  intros.
+  apply H.
+  inversion H0.
+  reflexivity.
+Qed.
+
+(* Se Char a casa com uma cadeia não vazia, então o restante (cauda) da cadeia é vazio.*)
+
+Lemma char_sufixo_vazio : forall (a : ascii) s, a :: s =~ Char a <-> s = [ ].
+Proof.
+  split.
+  - intros. inversion H. reflexivity.
+  - intros. rewrite H. apply MChar.
+Qed.
+
+(* Concateanr er0 er1 casa com a cadeia s se e somente se s = s0 ++ s1, com s0 casando com 
+er0 e s1 casando com er1. *)
+
+Lemma concatenar_existe : forall (s : string) er0 er1,
+  s =~ Concatenar er0 er1 <->
+  exists s0 s1, s = s0 ++ s1 /\ s0 =~ er0 /\ s1 =~ er1.
+Proof.
+  intros.
+  split.
+  - intros. inversion H. exists c1, c2. split.
+    * reflexivity.
+    * split. apply H3. apply H4.
+  - intros [ s0 [ s1 [ Happ [ Hmat0 Hmat1 ] ] ] ].
+    rewrite Happ. apply (MConcatenar s0 _ s1 _ Hmat0 Hmat1).
+Qed.
+
+(* Exercício *)
+(* Concatenar er0 er1 corresponde a a::s se, e somente se, er0 corresponde à cadeia vazia e 
+a::s corresponde a er1, ou s = s0 ++ s1, onde a::s0 corresponde a er0 e s1 corresponde a re1. 
+
+Embora esta seja uma propriedade puramente da relação de casamento (match), ela é uma 
+observação fundamental por trás do design do nosso correspondedor de regex (matcher). 
+Portanto, (1) tire um tempo para compreendê-la, (2) prove-a e (3) procure como você a usará 
+mais tarde. *)
+
+Lemma concatenar_nv : forall (a : ascii) s er0 er1,
+  a :: s =~ (Concatenar er0 er1) <->
+  ([ ] =~ er0 /\ a :: s =~ er1) \/
+  exists s0 s1, s = s0 ++ s1 /\ a :: s0 =~ er0 /\ s1 =~ er1.
+Proof.
+  intros.
+  split.
+  (* -> *)
+  - intros. inversion H. destruct c1 as [ | a0 s0]. 
+  (* c1 : [ ] *)
+    + left. split.
+      * apply H3.
+      * simpl. apply H4.
+  (* c1 : a0 :: s0*)
+    + right. exists s0, c2. split.
+    (* s = s0 ++ c2, direto da equação *)
+      * simpl in H1. injection H1. intros. rewrite H5. reflexivity.
+      * split.
+      (* a :: s0 =~ er0, usando a = a0 pra ajustar H3 *)
+        -- injection H1. intros. rewrite <- H6. apply H3.
+        -- apply H4.
+  (* <- *)
+  - intros [[H1 H2]| H3].
+     + apply (MConcatenar [] er0 (a :: s) er1).
+      * apply H1.
+      * apply H2.
+     + destruct H3 as [s0 [s1 [H4 [H5 H6]]]].
+      rewrite H4. apply (MConcatenar (a :: s0) er0 s1 er1).
+        * apply H5.
+        * apply H6.
+Qed.
+
+(* s é casado por Uniao er0 er1 se e somente se s é casado por er0 ou s é casado por er1. *)
+
+Lemma uniao_disj : forall (s : string) er0 er1,
+  s =~ Uniao er0 er1 <-> s =~ er0 \/ s =~ er1.
+Proof.
+  intros. split.
+  - intros. inversion H.
+    + left. apply H2.
+    + right. apply H1.
+  - intros [ H | H ].
+    + apply MUniaoEsquerda. apply H.
+    + apply MUniaoDireita. apply H.
+Qed.
+
+(* Exercício *)
+
+(* a::s é correspondido por Estrela er se e somente se s = s0 ++ s1, onde a::s0 é 
+correspondido por er e s1 é correspondido por Estrela er. Assim como concatenar_nv, essa 
+observação é crítica, então compreenda-a, prove-a e mantenha-a em mente.
+
+Dica: você precisará realizar indução. Há um bom número de candidatos razoáveis para Props a 
+serem provados por indução. O único que funcionará é dividir o ''se e somente se'' em duas 
+implicações e provar uma delas por indução sobre a evidência de a :: s =~ Estrela er. A outra 
+implicação pode ser provada sem indução.
+
+Para conseguir provar a propriedade correta por indução, você precisará reescrever a :: s =~ 
+Estrela er para que seja um Prop sobre variáveis gerais, usando a tática remember. *)
+
+Lemma estrela_nv : forall (a : ascii) s er,
+  a :: s =~ Estrela er <->
+  exists s0 s1, s = s0 ++ s1 /\ a :: s0 =~ er /\ s1 =~ Estrela er.
+Proof.
+  intros a s er.
+  split.
+  (* -> *) 
+  - intros Hmatch.
+    remember (a :: s) as x eqn: Ex.
+    remember (Estrela er) as er' eqn: Eq.
+    induction Hmatch.
+    (* MVazio *)
+    + discriminate Eq.
+    (* MChar *)
+    + discriminate Eq.
+    (* MConcatenar *)
+    + discriminate Eq.
+    (* MUniaoEsquerda*)
+    + discriminate Eq.
+    (* MUniaoDireita *)
+    + discriminate Eq.
+    (* MEstrela0 *)
+    + discriminate Ex.
+    (* MEstrelaConcatenar *)
+    + inversion Eq. 
+      rewrite H0 in IHHmatch2.
+      destruct c1 as [ | h1 c1'].
+        * simpl in Ex.
+        apply IHHmatch2.
+        -- apply Ex.
+        -- reflexivity.
+        * injection Ex as Hn Hs.
+          exists c1', c2. split.
+          -- symmetry. apply Hs.
+          -- split.
+            ++ rewrite H0 in Hmatch1. rewrite <- Hn. apply Hmatch1.
+            ++ rewrite H0 in Hmatch2. apply Hmatch2.
+  (* <- *)
+  - intros H. destruct H as [s0 [s1 [Hs [Hmatcher Hmatchestrela]]]].
+    rewrite Hs. 
+    apply (MEstrelaConcatenar(a :: s0) s1 er Hmatcher Hmatchestrela).
+Qed.
+
+(* A definição do nosso verificador de expressões regulares (regex) incluirá duas funções de 
+ponto fixo. A primeira função, dada a regex er, será avaliada para um valor que reflete se er 
+corresponde à string vazia. A função satisfará a seguinte propriedade: *)
+
+Definition refl_casa_cadv m :=
+  forall er : exp_reg ascii, reflect ([ ] =~ er) (m er).
+
+(* Exercício *)
+(* Complete a definição de casa_cadv para que ela teste se uma dada regex corresponde à 
+string vazia: *)
+
+Fixpoint casa_cadv (er: exp_reg ascii) : bool :=
+  match er with
+  | ConjuntoVazio => false
+  | CadeiaVazia => true
+  | Char t => false
+  | Concatenar r1 r2 => andb (casa_cadv r1) (casa_cadv r2)
+  | Uniao r1 r2 => orb (casa_cadv r1) (casa_cadv r2)
+  | Estrela r => true
+  end.
+
+(* Agora, prove que casa_cadv de fato testa se uma dada regex corresponde à string vazia. 
+(Dica: Você vai querer usar os lemas de reflexão ReflectT e ReflectF.) *)
+
+Lemma casa_cadv_refl : refl_casa_cadv casa_cadv.
+Proof.
+  unfold refl_casa_cadv.
+  intros er.
+  assert (Hnil : forall (c1 c2 : list ascii), c1 ++ c2 = [] -> c1 = [] /\ c2 = []). {
+    intros c1 c2 H. split.
+    - destruct c1.
+      + reflexivity.
+      + discriminate H.
+    - destruct c1.
+      + apply H.
+      + discriminate H.
+  }
+  induction er as [ | | t | r1 IHr1 r2 IHr2 | r1 IHr1 r2 IHr2 |r IHr ].
+  (* ConjuntoVazio *)
+  - apply ReflectF. intros contra. inversion contra.
+  (* CadeiaVazia *)
+  - apply ReflectT. apply MVazio.
+  (* Char *)
+  - apply ReflectF. intros contra. inversion contra.
+  (* Concatenar *)
+  - simpl. destruct IHr1 as [H1 | H1]. destruct IHr2 as [H2 | H2].
+    + apply ReflectT. apply (MConcatenar [] r1 [] r2 H1 H2).
+    + apply ReflectF. intros contra. inversion contra.
+      apply H2. apply Hnil in H0. 
+      destruct H0 as [Hc1 Hc2]. rewrite Hc2 in H5. apply H5.
+    + apply ReflectF. intros contra. apply H1. inversion contra.
+      apply Hnil in H0. destruct H0 as [Hc1 Hc2].
+      rewrite Hc1, Hc2. simpl. rewrite Hc1 in H3. apply H3.
+   (* Uniao *)
+  - simpl. destruct IHr1 as [H1 | H1]. destruct IHr2 as [H2 | H2].
+    + apply ReflectT. apply (MUniaoEsquerda [] r1 r2 H1).
+    + apply ReflectT. apply (MUniaoEsquerda [] r1 r2 H1).
+    + simpl. destruct IHr2 as [H2 | H2].
+      * apply ReflectT. apply (MUniaoDireita [] r1 r2 H2).
+      * apply ReflectF. intros contra. inversion contra.
+        -- apply H1. apply H3.
+        -- apply H2. apply H3.
+    (* Estrela *)
+  - apply ReflectT. apply MEstrela0.
+    Qed.
+
+(* Nós definiremos outras funções que usam casa_cadv. No entanto, a única propriedade de 
+casa_cadv que você precisará usar em todas as provas sobre essas funções é casa_cadv_refl.
+
+A operação principal que será executada pelo nosso verificador de expressões regulares 
+(regex) consistirá em construir iterativamente uma sequência de derivadas de regex. Para 
+cada caractere a e regex er, a derivada de er em relação a a é uma regex que corresponde a
+todos os sufixos de strings correspondidas por er que começam com a. Ou seja, er' é uma 
+derivada de er em relação a a se elas satisfizerem a seguinte relação: *)
+
+Definition e_der er (a : ascii) er' :=
+  forall s, a :: s =~ er <-> s =~ er'.
+
+(* Uma função d deriva strings se, dado um caractere a e um regex er, ela avalia a derivada de 
+er em a. Ou seja, d satisfaz a seguinte propriedade: *)
+Definition deriva d := forall a er, e_der er a (d a er).
+
+(* Exercício *)
+(* Defina derive para que ele derive strings (ou seja, produza derivadas de regex). Uma 
+implementação natural usa casa_cadv em alguns casos para determinar se um regex chave 
+corresponde à string vazia *)
+
+Fixpoint derive (a : ascii) (er : exp_reg ascii) : exp_reg ascii :=
+  match er with
+  | ConjuntoVazio => ConjuntoVazio
+  | CadeiaVazia => ConjuntoVazio  
+  | Char t => if nat_of_ascii a =? nat_of_ascii t then CadeiaVazia else ConjuntoVazio
+  | Concatenar r1 r2 => 
+      if casa_cadv r1 
+      then Uniao (Concatenar (derive a r1) r2) (derive a r2)
+      else Concatenar (derive a r1) r2
+  | Uniao r1 r2 => Uniao (derive a r1) (derive a r2)
+  | Estrela r => Concatenar (derive a r) (Estrela r)
+  end.
+
+(* A função derive deve passar nos testes a seguir. Cada teste estabelece uma igualdade entre 
+uma expressão que será avaliada pelo nosso verificador de regex e o valor final que o 
+verificador deve retornar. Cada teste está anotado com o fato de casamento que ele reflete. *)
+
+Example c := ascii_of_nat 99.
+Example d := ascii_of_nat 100.
+
+(* ''c'' =~ ConjuntoVazio: *)
+Example teste_der0 : casa_cadv (derive c (ConjuntoVazio)) = false.
+Proof.
+  reflexivity.
+Qed.
+
+(* ''c'' =~ Char c: *)
+Example teste_der1 : casa_cadv (derive c (Char c)) = true.
+Proof.
+  reflexivity.
+Qed.
+
+(* ''c'' =~ Char d: *)
+Example teste_der2 : casa_cadv (derive c (Char d)) = false.
+Proof.
+  reflexivity.
+Qed.
+
+(* ''c'' =~ Concatenar (Char c) CadeiaVazia: *)
+Example teste_der3 : casa_cadv (derive c (Concatenar (Char c) CadeiaVazia)) = true.
+Proof.
+  reflexivity.
+Qed.
+
+(* ''c'' =~ Concatenar CadeiaVazia (Char c): *)
+Example teste_der4 : casa_cadv (derive c (Concatenar CadeiaVazia (Char c))) = true.
+Proof.
+  reflexivity.
+Qed.
+
+(* ''c'' =~ Estrela c: *)
+Example teste_der5 : casa_cadv (derive c (Estrela (Char c))) = true.
+Proof.
+  reflexivity.
+Qed.
+
+(* ''cd'' =~ App (Char c) (Char d): *)
+Example teste_der6 :
+  casa_cadv (derive d (derive c (Concatenar (Char c) (Char d)))) = true.
+Proof.
+  reflexivity.
+Qed.
+
+(* ''cd'' =~ Concatenar (Char d) (Char c): *)
+Example test_der7 :
+  casa_cadv (derive d (derive c (Concatenar (Char d) (Char c)))) = false.
+Proof.
+  reflexivity.
+Qed.
+
+(* Exercício *)
+(* Prove que derive de fato sempre deriva strings.
+
+Dica: uma prova faz indução em er, mas você precisará escolher com cuidado a propriedade que 
+vai provar por indução, generalizando os termos apropriados.
+
+Dica: se a sua definição de derive aplica casa_cadv a uma regex er em particular, então uma
+prova natural vai aplicar casa_cadv_refl a er e fazer destruct no resultado, gerando casos 
+com as hipóteses de que er casa ou não casa com a string vazia.
+
+Dica: você pode economizar bastante trabalho usando os lemas provados acima. Em particular, 
+para provar muitos dos casos da indução, você pode reescrever uma Prop sobre uma regex 
+complicada (por exemplo, s =~ Uniao er0 er1) como uma combinação booleana de Props sobre 
+regexes simples (por exemplo, s =~ er0 ∨ s =~ er1), usando os lemas dados acima que são 
+equivalências lógicas. Depois você pode raciocinar sobre essas Props de forma natural, 
+usando intro e destruct. *)
+
+Lemma derive_corr : deriva derive.
+Proof. 
+  unfold deriva.
+  intros a er.
+  (* n =? n é sempre true *)
+  assert (Heqb_refl : forall n : nat, (n =? n) = true).
+  { intros n. induction n as [ | n' IHn].
+    - reflexivity.
+    - simpl. apply IHn. }
+  (* n =? m = true implica n = m *)
+  assert (Heqb_true : forall n m : nat, (n =? m) = true -> n = m).
+  { intros n. induction n as [ | n' IHn]; intros m Hm.
+    - destruct m as [ | m'].
+      + reflexivity.
+      + discriminate Hm.
+    - destruct m as [ | m'].
+      + discriminate Hm.
+      + simpl in Hm. apply IHn in Hm. rewrite Hm. reflexivity. }
+  induction er as [ | | t | r1 IHr1 r2 IHr2 | r1 IHr1 r2 IHr2 | r IHr].
+  - (* ConjuntoVazio *)
+    unfold e_der. intros s. split.
+    + intros H. inversion H.
+    + intros H. inversion H.
+  - (* CadeiaVazia *)
+    unfold e_der. intros s. split.
+    + intros H. inversion H.
+    + intros H. inversion H.
+  - (* Char *)
+    unfold e_der. intros s. simpl. split.
+    + intros H. inversion H.
+      rewrite Heqb_refl. apply MVazio.
+    + destruct (nat_of_ascii a =? nat_of_ascii t) eqn:E.
+      * intros H. inversion H.
+        apply Heqb_true in E.
+        assert (Hinj : a = t).
+        { rewrite <- (ascii_nat_embedding a). rewrite E.
+          apply ascii_nat_embedding. }
+        rewrite Hinj. apply MChar.
+      * intros H. inversion H.
+  - (* Concatenar *)
+    unfold e_der in *. intros s. simpl.
+    destruct (casa_cadv_refl r1) as [H1 | H1].
+    + (* H1 : [] =~ r1, o derive é um Uniao *)
+      rewrite concatenar_nv, uniao_disj, concatenar_existe.
+      split.
+      * intros [[_ H2] | [s0 [s1 [Hs [H2 H3]]]]].
+        -- (* r1 já terminou, o a é consumido por r2 *)
+           right. apply (proj1 _ _ (IHr2 s)). apply H2.
+        -- (* o a é consumido por r1 *)
+           left. exists s0, s1. split.
+           ++ apply Hs.
+           ++ split.
+              ** apply (proj1 _ _ (IHr1 s0)). apply H2.
+              ** apply H3.
+      * intros [[s0 [s1 [Hs [H2 H3]]]] | H2].
+        -- right. exists s0, s1. split.
+           ++ apply Hs.
+           ++ split.
+              ** apply (proj2 _ _ (IHr1 s0)). apply H2.
+              ** apply H3.
+        -- left. split.
+           ++ apply H1.
+           ++ apply (proj2 _ _ (IHr2 s)). apply H2.
+    + (* H1 : ~ [] =~ r1, o derive é só um Concatenar *)
+      rewrite concatenar_nv, concatenar_existe.
+      split.
+      * intros [[H2 _] | [s0 [s1 [Hs [H2 H3]]]]].
+        -- (* o primeiro lado exige [] =~ r1, absurdo *)
+           exfalso. apply H1. apply H2.
+        -- exists s0, s1. split.
+           ++ apply Hs.
+           ++ split.
+              ** apply (proj1 _ _ (IHr1 s0)). apply H2.
+              ** apply H3.
+      * intros [s0 [s1 [Hs [H2 H3]]]].
+        right. exists s0, s1. split.
+        -- apply Hs.
+        -- split.
+           ++ apply (proj2 _ _ (IHr1 s0)). apply H2.
+           ++ apply H3.
+  - (* Uniao *)
+    unfold e_der in *. intros s. simpl.
+    rewrite uniao_disj, uniao_disj.
+    split.
+    + intros [H | H].
+      * left. apply (proj1 _ _ (IHr1 s)). apply H.
+      * right. apply (proj1 _ _ (IHr2 s)). apply H.
+    + intros [H | H].
+      * left. apply (proj2 _ _ (IHr1 s)). apply H.
+      * right. apply (proj2 _ _ (IHr2 s)). apply H.
+  - (* Estrela *)
+    unfold e_der in *. intros s. simpl.
+    rewrite estrela_nv, concatenar_existe.
+    split.
+    + intros [s0 [s1 [Hs [H0 H1]]]]. exists s0, s1. split.
+      * apply Hs.
+      * split.
+        -- apply (proj1 _ _ (IHr s0)). apply H0.
+        -- apply H1.
+    + intros [s0 [s1 [Hs [H0 H1]]]]. exists s0, s1. split.
+      * apply Hs.
+      * split.
+        -- apply (proj2 _ _ (IHr s0)). apply H0.
+        -- apply H1.
+Qed.
+
+(* Vamos definir o matcher (avaliador de correspondência) de expressões regulares usando o 
+derive. No entanto, a única propriedade de derive que você precisará usar em todas as 
+demonstrações das propriedades do matcher é derive_corr.
+
+Uma função m corresponde a expressões regulares se, dadas uma string s e uma expressão regular 
+er, ela é avaliada em um valor que reflete se er corresponde a s. Ou seja, m satisfaz a 
+seguinte propriedade:*)
+
+Definition casa_regex m : Prop :=
+  forall (s : string) er, reflect (s =~ er) (m s er).
+
+(* Exercício *)
+(* Complete a definição de regex_casa para que ela case com expressões regulares. *)
+Fixpoint regex_casa (s : string) (er : exp_reg ascii) : bool :=
+    match s with
+    | [] => casa_cadv er
+    | a :: s' => regex_casa s' (derive a er)
+    end.
+
+(* Finalmente, prove que regex_casa de fato corresponde a expressões regulares.
+
+Dica: se a sua definição de regex_casa aplica casa_cadv à expressão regular er, então uma 
+prova natural aplica casa_cadv_refl a er e faz o destruct do resultado para gerar casos nos 
+quais você pode assumir que er casa (ou não) com a cadeia vazia.
+
+Dica: se a sua definição de regex_casa aplica derive ao caractere x e à expressão regular er, 
+então uma prova natural aplica derive_corr a x e re para provar que x :: s =~ er dado 
+s =~ derive x er, e vice-versa. *)
+
+Theorem regex_casa_correto : casa_regex regex_casa.
+Proof.
+  unfold casa_regex.
+  intros s. induction s as [ | a s' IHs].
+    - apply casa_cadv_refl.
+    - simpl. intros er. destruct (IHs (derive a  er)) as [H1 | H1'].  
+      + apply ReflectT.  apply derive_corr. apply H1.
+      + apply ReflectF. intros contra. apply H1'.
+      apply derive_corr. apply contra.
+Qed.
