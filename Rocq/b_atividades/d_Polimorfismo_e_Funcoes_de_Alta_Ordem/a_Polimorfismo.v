@@ -8,7 +8,7 @@
  | cons (x : X)(l : lista X). (* x seria head do tipo X passado e l seria tail do tipo X passado *)
 
  (* list é uma função de types para types *)
- Check lista : Type -> Type.
+ Check lista : Type -> Type. 
 
  (* O 'X' na definição de 'lista' se torna um parâmetro  para os construtores da lista 'nil' e 'cons' *)
  Check (nil nat) : lista nat.
