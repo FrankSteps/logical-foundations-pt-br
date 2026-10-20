@@ -86,3 +86,183 @@ mapas totais que retornam um valor padrão quando consultamos uma chave que não
 presente no mapa. *)
 
 Definition mapa_total (A : Type) := string -> A.
+
+(* Intuitivamente, um mapa total sobre um tipo de elemento A é apenas uma função que pode 
+ser usada para consultar strings, resultando em As. 
+
+A função t_vazia gera um mapa total vazio, dado um elemento padrão; esse mapa sempre 
+retorna o elemento padrão quando aplicado a qualquer string. *)
+
+Definition t_vazia {A : Type} (v : A) : mapa_total A :=
+  (fun _ => v).
+
+(* Mais interessante é a função de atualização de mapa que, (como sempre) recebe um mapa m, 
+uma chave x e um valor v, e retorna um novo mapa que mapeia x para v e mapeia qualquer 
+outra chave para o que m já mapeava. A novidade aqui é que alcançamos esse efeito 
+envolvendo uma nova função ao redor da antiga. *)
+
+Definition t_atualiza {A : Type} (m : mapa_total A)
+                    (x : string) (v : A) :=
+  fun x' => if String.eqb x x' then v else m x'.
+
+(* Esta definição é um belo exemplo de programação de ordem superior: t_atualiza recebe 
+uma função m e gera uma nova função fun x' => ... que se comporta como o mapa desejado. 
+
+Por exemplo, podemos construir um mapa que mapeia strings para booleanos (bools), onde 
+''foo'' e ''bar'' são mapeados para verdadeiro (true) e qualquer outra chave é mapeada 
+para falso (false), assim: *)
+
+Definition mapaexemplo :=
+  t_atualiza (t_atualiza (t_vazia false) "foo" true)
+           "bar" true.
+      
+(* Em seguida, vamos introduzir algumas notações para facilitar o trabalho com mapas. 
+Primeiro, usamos a seguinte notação para representar um mapa total vazio com um valor 
+padrão. *)
+
+Notation "'__' '!->' v" := (t_vazia v)
+  (at level 100, right associativity).
+
+Example examplo_vazio := ( false).
+
+(* A seguir, introduzimos uma notação simbólica para estender um mapa existente com uma 
+nova associação (binding).*)
+
+Notation "x '!->' v ';' m" := (t_atualiza m x v)
+                                (at level 100, v constr at level 100, right associativity).
+
+(* O mapa de exemplo acima agora pode ser definido da seguinte forma: *)
+
+Definition mapaexemplo' :=
+  ( "bar" !-> true;
+    "foo" !-> true;
+    __ !-> false
+  ).
+
+(* Isto conclui a definição de mapas totais. Note que não precisamos definir uma operação 
+de busca (find) nesta representação de mapas porque ela é simplesmente a aplicação de função!
+
+Quando usarmos mapas em capítulos futuros, precisaremos de vários fatos fundamentais 
+sobre como eles se comportam. 
+
+Mesmo que você não faça os exercícios a seguir, certifique-se de compreender 
+profundamente os enunciados dos lemas! 
+
+(Algumas das provas exigem o axioma da extensionalidade funcional, que foi discutido no 
+capítulo de Lógica). *)
+
+(* Exercício *)
+(* Primeiro, o mapa vazio retorna seu elemento padrão para todas as chaves: *)
+
+Lemma t_aplicando_vazia : forall (A : Type) (x : string) (v : A),
+  (__ !-> v) x = v.
+Proof.  
+  intros A x v.
+  unfold t_vazia. reflexivity.
+Qed.
+
+(* A seguir, se atualizarmos um mapa m em uma chave x com um novo valor v e depois 
+consultarmos x no mapa resultante da atualização, obteremos v de volta: *)
+
+Lemma t_atualiza_eq : forall (A : Type) (m : mapa_total A) x v,
+  (x !-> v ; m) x = v.
+Proof.
+  intros A m x v.
+  unfold t_atualiza.
+  rewrite eqb_refl.
+  reflexivity.
+Qed. 
+
+(* Por outro lado, se atualizarmos um mapa m na chave x1 e depois consultarmos uma chave 
+diferente x2 no mapa resultante, obtemos o mesmo resultado que m teria fornecido *)
+
+Theorem t_atualiza_neq : forall (A : Type) (m : mapa_total A) x1 x2 v,
+  x1 <> x2 ->
+  (x1 !-> v ; m) x2 = m x2.
+Proof.
+  intros A m x1 x2 v H.
+  unfold t_atualiza. 
+  rewrite <- eqb_neq in H.
+  rewrite H. reflexivity.
+Qed. 
+
+(* Se atualizarmos um mapa m na chave x com um valor v1 e depois atualizarmos novamente 
+com a mesma chave x e outro valor v2, o mapa resultante comporta-se da mesma forma 
+(fornece o mesmo resultado ao ser aplicado a qualquer chave) que o mapa mais simples 
+obtido ao realizar apenas a segunda atualização sobre m: *)
+
+Lemma t_atualiza_ofusca : forall (A : Type) (m : mapa_total A) x v1 v2,
+  (x !-> v2 ; x !-> v1 ; m) = (x !-> v2 ; m).
+Proof.
+  intros A m x v1 v2.
+  apply functional_extensionality. intros y.
+  destruct (eqb_spec x y) as [H | H].
+  - rewrite H. rewrite t_atualiza_eq.
+   symmetry. apply t_atualiza_eq.
+  - rewrite t_atualiza_neq.
+    + rewrite (t_atualiza_neq A m x y v1 H).
+      symmetry. apply (t_atualiza_neq A m x y v2).
+      apply H.
+    + apply H.
+Qed.  
+   
+(* Dadas as strings x1 e x2, podemos usar a tática destruct (eqb_spec x1 x2) para realizar 
+simultaneamente uma análise de casos sobre o resultado de String.eqb x1 x2 e gerar hipóteses 
+sobre a igualdade (no sentido de =) de x1 e x2. Tendo o exemplo no capítulo IndProp como 
+modelo, use String.eqb_spec para provar o seguinte teorema, que afirma que se atualizarmos 
+um mapa para atribuir à chave x o mesmo valor que ela já possui em m, então o resultado é 
+igual a m: *)
+
+Theorem t_atualiza_igual : forall (A : Type) (m : mapa_total A) x,
+  (x !-> m x ; m) = m.
+Proof.
+  intros A m x.
+  apply functional_extensionality.
+  intros y. destruct (eqb_spec x y) as [H | H].
+  - rewrite H. apply t_atualiza_eq.
+  - rewrite t_atualiza_neq.
+    + reflexivity.
+    + apply H.
+Qed.
+
+(* Similarmente, use String.eqb_spec para provar uma última propriedade da função update: se 
+atualizarmos um mapa m em duas chaves distintas, não importa a ordem em que fazemos as 
+atualizações. *)
+Theorem t_atualiza_permuta : forall (A : Type) (m : mapa_total A)
+                                  v1 v2 x1 x2,
+  x2 <> x1 ->
+  (x1 !-> v1 ; x2 !-> v2 ; m)
+  =
+  (x2 !-> v2 ; x1 !-> v1 ; m).
+Proof.
+  intros A m v1 v2 x1 x2 H.
+  (* dois mapas são iguais se concordam em todo ponto y *)
+  apply functional_extensionality.
+  intros y. unfold t_atualiza.
+  destruct (eqb_spec x1 y) as [E1 | E1].
+  - destruct (eqb_spec x2 y) as [E2 | E2].
+    + (* x1 = y e x2 = y: então x2 = x1, o que contradiz H *)
+      rewrite E1, E2 in H. destruct H as [ ].
+      reflexivity.
+    + (* x1 = y e x2 <> y: os dois lados devolvem v1 *)
+      reflexivity.
+  - destruct (eqb_spec x2 y) as [E2 | E2].
+    + (* x1 <> y e x2 = y: os dois lados devolvem v2 *)
+      reflexivity.
+    + (* x1 <> y e x2 <> y: os dois lados caem em m y *)
+      reflexivity.
+Qed.
+  
+(*************************************** Mapas Parciais ***********************************)
+
+(* Por fim, definimos mapas parciais sobre mapas totais. Um mapa parcial com elementos do 
+tipo A é simplesmente um mapa total com elementos do tipo option A e elemento padrão None. *)
+
+Definition mapa_parcial (A : Type) := mapa_total (option A).
+
+Definition vazia {A : Type} : mapa_parcial A :=
+  t_vazia None.
+
+Definition atualiza {A : Type} (m : mapa_parcial A)
+           (x : string) (v : A) :=
+  (x !-> Some v ; m).
