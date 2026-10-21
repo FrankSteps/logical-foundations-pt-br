@@ -266,3 +266,105 @@ Definition vazia {A : Type} : mapa_parcial A :=
 Definition atualiza {A : Type} (m : mapa_parcial A)
            (x : string) (v : A) :=
   (x !-> Some v ; m).
+
+(* Apresentamos uma notação semelhante para mapas parciais: *)
+
+Notation "x '⊢>' v ';' m" := (atualiza m x v)
+  (at level 0, x constr, v at level 200, right associativity).
+
+(* Também podemos ocultar o último caso quando ele for vazio. *)
+
+Notation "x '⊢>' v" := (atualiza vazia x v)
+  (at level 0, x constr, v at level 200).
+
+Definition exemplomapa :=
+  ("Church" ⊢> true ; "Turing" ⊢> false).
+
+(* Agora estendemos diretamente todos os lemas básicos sobre mapas totais para mapas 
+parciais. *)
+
+Lemma aplica_vazia : forall (A : Type) (x : string),
+  @vazia A x = None.
+Proof.
+  intros. unfold vazia. rewrite t_aplicando_vazia.
+  reflexivity.
+Qed.
+
+Lemma atualiza_eq : forall (A : Type) (m : mapa_parcial A) x v,
+  (x ⊢> v ; m) x = Some v.
+Proof.
+  intros. unfold atualiza. rewrite t_atualiza_eq.
+  reflexivity.
+Qed.
+
+(* O lema atualiza_eq é utilizado com muita frequência em demonstrações. Adicioná-lo 
+à 'base de dicas' (hint database) global do Rocq permite que táticas de automação de
+provas, como o auto, o encontrem.*)
+
+#[global] Hint Resolve atualiza_eq : core.
+
+Theorem atualiza_neq : forall (A : Type) (m : mapa_parcial A) x1 x2 v,
+  x2 <> x1 ->
+  (x2 ⊢> v ; m) x1 = m x1.
+Proof.
+  intros A m x1 x2 v H.
+  unfold atualiza. rewrite t_atualiza_neq.
+  - reflexivity.
+  - apply H.
+Qed.
+
+Lemma atualiza_ofusca : forall (A : Type) (m : mapa_parcial A) x v1 v2,
+  (x ⊢> v2 ; x ⊢> v1 ; m) = (x ⊢> v2 ; m).
+Proof.
+  intros A m x v1 v2. unfold atualiza. rewrite t_atualiza_ofusca.
+  reflexivity.
+Qed.
+
+Theorem atualiza_igual : forall (A : Type) (m : mapa_parcial A) x v,
+  m x = Some v ->
+  (x ⊢> v ; m) = m.
+Proof.
+  intros A m x v H. unfold atualiza. rewrite <- H.
+  apply t_atualiza_igual.
+Qed.
+
+Theorem atualiza_permuta : forall (A : Type) (m : mapa_parcial A)
+                                x1 x2 v1 v2,
+  x2 <> x1 ->
+  (x1 ⊢> v1 ; x2 ⊢> v2 ; m) = (x2 ⊢> v2 ; x1 ⊢> v1 ; m).
+Proof.
+  intros A m x1 x2 v1 v2. unfold atualiza.
+  apply t_atualiza_permuta.
+Qed.
+
+(* Para finalizar: Para mapas parciais, é conveniente introduzir uma noção de inclusão de 
+mapas, afirmando que todas as entradas em um mapa também estão presentes em outro: *)
+
+Definition incluiem {A : Type} (m m' : mapa_parcial A) :=
+  forall x v, m x = Some v -> m' x = Some v.
+
+(* Podemos então mostrar que a atualização de mapas preserva a inclusão de mapas, isto é: *)
+
+Lemma incluiem_atualiza : forall (A : Type) (m m' : mapa_parcial A)
+                                 (x : string) (vx : A),
+  incluiem m m' ->
+  incluiem (x ⊢> vx ; m) (x ⊢> vx ; m').
+Proof.
+  unfold incluiem.
+  intros A m m' x vx H.
+  intros y vy.
+  destruct (eqb_spec x y) as [Hxy | Hxy].
+  - rewrite Hxy.
+    rewrite atualiza_eq. rewrite atualiza_eq. intro H1. apply H1.
+  - rewrite atualiza_neq.
+    + rewrite atualiza_neq.
+      * apply H.
+      * apply Hxy.
+    + apply Hxy.
+Qed.
+
+(* Esta propriedade é bastante útil para o raciocínio sobre linguagens com ligação de 
+variáveis -- por exemplo, o Cálculo Lambda Simplesmente Tipado, que veremos em 
+Fundamentação de Linguagens de Programação (Programming Language Foundations), onde os 
+mapas são usados para rastrear quais variáveis de programa estão definidas em um dado
+escopo.*)
