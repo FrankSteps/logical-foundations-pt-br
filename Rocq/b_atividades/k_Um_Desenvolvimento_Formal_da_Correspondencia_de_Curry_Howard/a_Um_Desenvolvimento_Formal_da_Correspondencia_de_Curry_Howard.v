@@ -1415,42 +1415,6 @@ Dica: proceda por indução sobre a evidência de que p é demonstrável. Nos (m
 indutivos, use as hipóteses indutivas para derivar a existência de algumas subexpressões e, 
 em seguida, monte-as em uma expressão com o tipo exigido. *)
 
-(* | axiom : forall A p,
-      In p A ->
-      provable A p
-  | implies_intro : forall A p q,
-      provable (p :: A) q ->
-      provable A (implies p q)
-  | implies_elim : forall A p q,
-      provable A (implies p q) ->
-      provable A p ->
-      provable A q
-  | false_elim : forall A p,
-      provable A false ->
-      provable A p
-  (* As seis regras seguintes são novas. *)
-  | and_intro : forall A p q,
-      provable A p ->
-      provable A q ->
-      provable A (and p q)
-  | and_elim_L : forall A p q,
-      provable A (and p q) ->
-      provable A p
-  | and_elim_R : forall A p q,
-      provable A (and p q) ->
-      provable A q
-  | or_intro_L : forall A p q,
-      provable A p ->
-      provable A (or p q)
-  | or_intro_R : forall A p q,
-      provable A q ->
-      provable A (or p q)
-  | or_elim : forall A p q r,
-      provable (p :: A) r ->
-      provable (q :: A) r ->
-      provable A (or p q) ->
-      provable A r. *)
-
 Theorem curry_howard_converse : forall A p,
   provable A p ->
   exists e, hastype (tenv_of_assumptions A) e (type_of_proposition p).
